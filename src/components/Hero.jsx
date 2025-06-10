@@ -1,5 +1,7 @@
 import React from 'react'
 import { MapPin, Clock, Phone } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import Logo from './Logo'
 import './Hero.css'
 
 const Hero = () => {
@@ -26,29 +28,14 @@ const Hero = () => {
               Authentic Mexican street food made with love and tradition. 
               Experience the true flavors of Mexico right here in your neighborhood.
             </p>
-            
-            <div className="hero-info">
-              <div className="info-item">
-                <MapPin className="info-icon" />
-                <span>Downtown Food District</span>
-              </div>
-              <div className="info-item">
-                <Clock className="info-icon" />
-                <span>Mon-Sat: 11AM-9PM</span>
-              </div>
-              <div className="info-item">
-                <Phone className="info-icon" />
-                <span>(555) 123-TACO</span>
-              </div>
-            </div>
 
             <div className="hero-buttons">
-              <button className="btn btn-primary" onClick={scrollToMenu}>
-                View Menu
-              </button>
-              <a href="#location" className="btn btn-secondary">
+              <Link to="/menu" className="btn btn-primary btn-large">
+                Place Order
+              </Link>
+              <Link to="/location" className="btn btn-outline">
                 Find Us
-              </a>
+              </Link>
             </div>
           </div>
 

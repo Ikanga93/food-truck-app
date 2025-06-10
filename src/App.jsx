@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
-import Hero from './components/Hero'
-import Menu from './components/Menu'
-import About from './components/About'
-import Location from './components/Location'
-import Contact from './components/Contact'
 import Footer from './components/Footer'
 import Cart from './components/Cart'
+import HomePage from './pages/HomePage'
+import MenuPage from './pages/MenuPage'
+import LocationPage from './pages/LocationPage'
+import AboutPage from './pages/AboutPage'
+import CateringPage from './pages/CateringPage'
 
 function App() {
   const [cartItems, setCartItems] = useState([])
@@ -60,28 +61,57 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <Header 
-        cartItems={cartItems} 
-        onCartOpen={handleCartOpen}
-      />
-      <Hero />
-      <Menu 
-        onAddToCart={handleAddToCart}
-        cartItems={cartItems}
-      />
-      <About />
-      <Location />
-      <Contact />
-      <Footer />
-      <Cart
-        isOpen={isCartOpen}
-        onClose={handleCartClose}
-        cartItems={cartItems}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-      />
-    </div>
+    <Router>
+      <div className="App">
+        <Header 
+          cartItems={cartItems} 
+          onCartOpen={handleCartOpen}
+        />
+        
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <HomePage 
+                onAddToCart={handleAddToCart}
+                cartItems={cartItems}
+              />
+            } 
+          />
+          <Route 
+            path="/menu" 
+            element={
+              <MenuPage 
+                onAddToCart={handleAddToCart}
+                cartItems={cartItems}
+              />
+            } 
+          />
+          <Route 
+            path="/about" 
+            element={<AboutPage />} 
+          />
+          <Route 
+            path="/catering" 
+            element={<CateringPage />} 
+          />
+          <Route 
+            path="/location" 
+            element={<LocationPage />} 
+          />
+        </Routes>
+        
+        <Footer />
+        
+        <Cart
+          isOpen={isCartOpen}
+          onClose={handleCartClose}
+          cartItems={cartItems}
+          onUpdateQuantity={handleUpdateQuantity}
+          onRemoveItem={handleRemoveItem}
+        />
+      </div>
+    </Router>
   )
 }
 

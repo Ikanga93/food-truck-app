@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { Phone, Mail, MessageCircle, Send } from 'lucide-react'
+import { Send } from 'lucide-react'
 import './Contact.css'
 
 const Contact = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     message: ''
   })
 
@@ -19,8 +20,15 @@ const Contact = () => {
   const handleSubmit = (e) => {
     e.preventDefault()
     // Handle form submission here
-    alert('¡Gracias! We\'ll get back to you soon!')
-    setFormData({ name: '', email: '', message: '' })
+    console.log('Form submitted:', formData)
+    // Reset form
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      message: ''
+    })
+    alert('¡Gracias! Your message has been sent. We\'ll get back to you soon!')
   }
 
   return (
@@ -28,86 +36,62 @@ const Contact = () => {
       <div className="container">
         <h2 className="section-title">Contact Us</h2>
         <p className="section-subtitle">
-          Have questions? Want to book us for an event? We'd love to hear from you!
+          Have questions about our food truck or menu? Get in touch!
         </p>
 
         <div className="contact-content">
-          <div className="contact-info">
-            <div className="contact-item">
-              <div className="contact-icon">
-                <Phone />
-              </div>
-              <div className="contact-details">
-                <h3>Call Us</h3>
-                <p>(555) 123-TACO</p>
-                <span>Mon-Sat: 10AM-10PM</span>
-              </div>
-            </div>
-
-            <div className="contact-item">
-              <div className="contact-icon">
-                <Mail />
-              </div>
-              <div className="contact-details">
-                <h3>Email Us</h3>
-                <p>hello@fernandosfoodtruck.com</p>
-                <span>We reply within 24 hours</span>
-              </div>
-            </div>
-
-            <div className="contact-item">
-              <div className="contact-icon">
-                <MessageCircle />
-              </div>
-              <div className="contact-details">
-                <h3>Follow Us</h3>
-                <p>@FernandosFoodTruck</p>
-                <span>Daily updates & specials</span>
-              </div>
-            </div>
-          </div>
-
-          <form className="contact-form card" onSubmit={handleSubmit}>
+          <div className="contact-form">
             <h3>Send us a Message</h3>
-            
-            <div className="form-group">
-              <input
-                type="text"
-                name="name"
-                placeholder="Your Name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <input
-                type="email"
-                name="email"
-                placeholder="Your Email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <textarea
-                name="message"
-                placeholder="Your Message"
-                rows="5"
-                value={formData.message}
-                onChange={handleChange}
-                required
-              ></textarea>
-            </div>
-
-            <button type="submit" className="btn btn-primary">
-              <Send size={18} />
-              Send Message
-            </button>
-          </form>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Your Name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Your Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="Your Phone (Optional)"
+                  value={formData.phone}
+                  onChange={handleChange}
+                />
+              </div>
+              
+              <div className="form-group">
+                <textarea
+                  name="message"
+                  placeholder="Your Message"
+                  rows="5"
+                  value={formData.message}
+                  onChange={handleChange}
+                  required
+                ></textarea>
+              </div>
+              
+              <button type="submit" className="btn btn-primary">
+                <Send size={20} />
+                Send Message
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </section>

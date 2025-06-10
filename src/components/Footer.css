@@ -60,6 +60,32 @@
   color: var(--warm-yellow);
 }
 
+.contact-icons {
+  display: flex;
+  gap: 20px;
+  justify-content: flex-start;
+}
+
+.contact-icon-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(45deg, var(--primary-red), var(--light-orange));
+  border-radius: 50%;
+  font-size: 1.5rem;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.contact-icon-link:hover {
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(45deg, var(--warm-yellow), #FFD54F);
+}
+
 .footer-bottom {
   text-align: center;
   padding-top: 30px;
@@ -81,5 +107,16 @@
   .footer-links {
     grid-template-columns: 1fr;
     gap: 30px;
+  }
+
+  .contact-icons {
+    justify-content: center;
+    gap: 15px;
+  }
+
+  .contact-icon-link {
+    width: 45px;
+    height: 45px;
+    font-size: 1.3rem;
   }
 } 

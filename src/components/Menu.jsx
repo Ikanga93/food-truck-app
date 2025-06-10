@@ -1,97 +1,32 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Plus, Minus, ShoppingCart } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import './Menu.css'
 
 const Menu = ({ onAddToCart, cartItems }) => {
-  const [activeCategory, setActiveCategory] = useState('bestsellers')
-
-  const menuItems = {
-    bestsellers: [
-      {
-        id: 'torta-1',
-        name: "Torta",
-        price: 8.00,
-        description: "Avocado, lettuce, tomato, onion, jalapenos, mayo and cheese.",
-        emoji: "🥪",
-        isBestSeller: true
-      },
-      {
-        id: 'mexican-corn',
-        name: "Mexican Corn",
-        price: 3.00,
-        description: "Cheese, mayo and chili pepper.",
-        emoji: "🌽"
-      },
-      {
-        id: 'chicken',
-        name: "Chicken",
-        price: 12.00,
-        description: "Grilled chicken prepared with authentic Mexican spices",
-        emoji: "🍗"
-      }
-    ],
-    tacos: [
-      {
-        id: 'taco-carnitas',
-        name: "Taco de Carnitas",
-        price: 3.50,
-        description: "Slow-cooked pork with onions, cilantro, and salsa verde",
-        emoji: "🌮"
-      },
-      {
-        id: 'taco-asada',
-        name: "Taco de Carne Asada",
-        price: 4.00,
-        description: "Grilled beef with pico de gallo and guacamole",
-        emoji: "🌮"
-      },
-      {
-        id: 'taco-pollo',
-        name: "Taco de Pollo",
-        price: 3.25,
-        description: "Marinated chicken with lettuce, cheese, and crema",
-        emoji: "🌮"
-      }
-    ],
-    burritos: [
-      {
-        id: 'burrito-supreme',
-        name: "Burrito Supreme",
-        price: 9.50,
-        description: "Choice of meat, rice, beans, cheese, lettuce, pico, sour cream",
-        emoji: "🌯"
-      },
-      {
-        id: 'burrito-carnitas',
-        name: "Burrito de Carnitas",
-        price: 8.75,
-        description: "Carnitas, rice, beans, onions, cilantro, salsa verde",
-        emoji: "🌯"
-      }
-    ],
-    sides: [
-      {
-        id: 'guacamole',
-        name: "Guacamole & Chips",
-        price: 5.50,
-        description: "Fresh avocado dip with crispy tortilla chips",
-        emoji: "🥑"
-      },
-      {
-        id: 'horchata',
-        name: "Horchata",
-        price: 3.00,
-        description: "Traditional rice and cinnamon drink",
-        emoji: "🥛"
-      }
-    ]
-  }
-
-  const categories = [
-    { id: 'bestsellers', name: 'Best Sellers', emoji: '⭐' },
-    { id: 'tacos', name: 'Tacos', emoji: '🌮' },
-    { id: 'burritos', name: 'Burritos', emoji: '🌯' },
-    { id: 'sides', name: 'Sides & Drinks', emoji: '🥑' }
+  const bestSellers = [
+    {
+      id: 'tortas',
+      name: "Tortas",
+      price: 8.00,
+      description: "Avocado, lettuce, tomato, onion, jalapeños, mayo and cheese.",
+      emoji: "🥙",
+      isBestSeller: true
+    },
+    {
+      id: 'mexican-corn',
+      name: "Mexican Corn",
+      price: 3.00,
+      description: "Cheese, mayo and chili pepper.",
+      emoji: "🌽"
+    },
+    {
+      id: 'tacos',
+      name: "Tacos",
+      price: 3.00,
+      description: "Mexican: Cilantro & Onion | American: Lettuce, Tomato, Onion & Cheese",
+      emoji: "🌮"
+    }
   ]
 
   const getItemQuantity = (itemId) => {
@@ -106,26 +41,13 @@ const Menu = ({ onAddToCart, cartItems }) => {
   return (
     <section id="menu" className="menu section">
       <div className="container">
-        <h2 className="section-title">Our Menu</h2>
+        <h2 className="section-title">Our Best Sellers</h2>
         <p className="section-subtitle">
-          Authentic Mexican flavors made fresh daily with traditional recipes
+          Try our most popular authentic Mexican dishes
         </p>
 
-        <div className="menu-categories">
-          {categories.map(category => (
-            <button
-              key={category.id}
-              className={`category-btn ${activeCategory === category.id ? 'active' : ''}`}
-              onClick={() => setActiveCategory(category.id)}
-            >
-              <span className="category-emoji">{category.emoji}</span>
-              {category.name}
-            </button>
-          ))}
-        </div>
-
         <div className="menu-items">
-          {menuItems[activeCategory].map((item) => (
+          {bestSellers.map((item) => (
             <div key={item.id} className="menu-item card">
               <div className="item-emoji">{item.emoji}</div>
               <div className="item-content">
@@ -168,6 +90,39 @@ const Menu = ({ onAddToCart, cartItems }) => {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="menu-cta">
+          <Link to="/menu" className="btn btn-primary">
+            Place Order
+          </Link>
+        </div>
+
+        <div className="menu-info-section">
+          <div className="info-cards">
+            <div className="info-card">
+              <div className="info-icon">🚚</div>
+              <h4>Fresh Daily</h4>
+              <p>All our ingredients are prepared fresh every morning using authentic Mexican recipes</p>
+            </div>
+            <div className="info-card">
+              <div className="info-icon">⏰</div>
+              <h4>Quick Service</h4>
+              <p>Fast, friendly service without compromising on quality or authenticity</p>
+            </div>
+            <div className="info-card">
+              <div className="info-icon">🌶️</div>
+              <h4>Authentic Flavors</h4>
+              <p>Traditional Mexican spices and cooking methods passed down through generations</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="event-booking-note">
+          <p>Need catering for your event? We bring Fernando's delicious food directly to you!</p>
+          <Link to="/catering" className="btn btn-secondary">
+            Book Us for Your Event
+          </Link>
         </div>
       </div>
     </section>

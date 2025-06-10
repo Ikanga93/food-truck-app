@@ -16,18 +16,38 @@
   align-items: center;
 }
 
-.logo h1 {
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  transition: transform 0.3s ease;
+}
+
+.logo:hover {
+  transform: scale(1.02);
+}
+
+.logo-image {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+.logo-text h1 {
   font-size: 2rem;
   font-weight: 700;
   color: var(--primary-red);
-  margin-bottom: -5px;
+  margin: 0;
+  line-height: 1;
 }
 
-.logo span {
+.logo-text span {
   font-size: 0.9rem;
   color: var(--primary-green);
   font-weight: 400;
   font-style: italic;
+  line-height: 1;
 }
 
 .nav {
@@ -115,6 +135,28 @@
 }
 
 @media (max-width: 768px) {
+  .header {
+    padding: 12px 0;
+  }
+
+  .logo-image {
+    width: 40px;
+    height: 40px;
+  }
+
+  .logo-text h1 {
+    font-size: 1.6rem;
+  }
+
+  .logo-text span {
+    font-size: 0.8rem;
+  }
+
+  .cart-btn {
+    width: 40px;
+    height: 40px;
+  }
+
   .menu-toggle {
     display: block;
   }

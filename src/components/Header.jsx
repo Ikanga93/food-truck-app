@@ -1,15 +1,24 @@
 import React, { useState } from 'react'
 import { Menu, X, ShoppingCart } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import Logo from './Logo'
 import './Header.css'
 
 const Header = ({ cartItems, onCartOpen }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const location = useLocation()
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
   }
 
   const scrollToSection = (sectionId) => {
+    if (location.pathname !== '/') {
+      // If not on home page, navigate to home first
+      window.location.href = `/#${sectionId}`
+      return
+    }
+    
     const element = document.getElementById(sectionId)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' })
@@ -23,16 +32,20 @@ const Header = ({ cartItems, onCartOpen }) => {
     <header className="header">
       <div className="container">
         <div className="header-content">
-          <div className="logo">
-            <h1>Fernando's</h1>
-            <span>Auténtica Comida Mexicana</span>
-          </div>
+          <Link to="/" className="logo">
+            <div className="logo-text">
+              <h1>Fernando's</h1>
+              <span>Auténtica Comida Mexicana</span>
+            </div>
+            <Logo size={50} className="logo-image" />
+          </Link>
           
           <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
-            <a href="#home" onClick={() => scrollToSection('home')}>Home</a>
-            <a href="#menu" onClick={() => scrollToSection('menu')}>Menu</a>
-            <a href="#about" onClick={() => scrollToSection('about')}>About</a>
-            <a href="#location" onClick={() => scrollToSection('location')}>Location</a>
+            <Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link>
+            <Link to="/menu" onClick={() => setIsMenuOpen(false)}>Place Order</Link>
+            <Link to="/about" onClick={() => setIsMenuOpen(false)}>About</Link>
+            <Link to="/catering" onClick={() => setIsMenuOpen(false)}>Events</Link>
+            <Link to="/location" onClick={() => setIsMenuOpen(false)}>Find Us</Link>
             <a href="#contact" onClick={() => scrollToSection('contact')}>Contact</a>
           </nav>
 

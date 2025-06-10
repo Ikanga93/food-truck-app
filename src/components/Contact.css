@@ -3,9 +3,10 @@
 }
 
 .contact-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
+  display: flex;
+  justify-content: center;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .contact-info {
@@ -55,7 +56,11 @@
 }
 
 .contact-form {
+  width: 100%;
   padding: 40px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .contact-form h3 {
@@ -101,11 +106,11 @@
 
 @media (max-width: 768px) {
   .contact-content {
-    grid-template-columns: 1fr;
-    gap: 40px;
+    max-width: 100%;
+    padding: 0 20px;
   }
   
   .contact-form {
-    padding: 30px;
+    padding: 30px 20px;
   }
 } 
