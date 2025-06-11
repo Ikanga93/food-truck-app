@@ -1,3 +1,5 @@
+import API_BASE_URL from './api.js'
+
 // Business Configuration System
 // This allows the same codebase to be used for multiple locations and business types
 
@@ -183,7 +185,7 @@ export const hasMultipleLocations = () => {
 
 // Environment-specific overrides
 export const getEnvironmentConfig = () => {
-  const env = process.env.NODE_ENV || 'development'
+  const env = import.meta.env.MODE || 'development'
   
   const envConfigs = {
     development: {
@@ -191,7 +193,7 @@ export const getEnvironmentConfig = () => {
       enableDebug: true
     },
     production: {
-      apiUrl: 'https://api.fernandosfoodtruck.com',
+      apiUrl: API_BASE_URL,
       enableDebug: false
     }
   }

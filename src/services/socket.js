@@ -1,14 +1,16 @@
 import { io } from 'socket.io-client'
+import API_BASE_URL from '../config/api.js'
 
 class SocketService {
   constructor() {
     this.socket = null
+    this.listeners = new Map()
     this.isConnected = false
   }
 
   connect() {
     if (!this.socket) {
-      this.socket = io('http://localhost:3001', {
+      this.socket = io(API_BASE_URL, {
         transports: ['websocket', 'polling']
       })
 

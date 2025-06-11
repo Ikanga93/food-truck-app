@@ -1,5 +1,7 @@
+import API_BASE_URL from '../config/api.js'
+
 class ApiService {
-  static BASE_URL = 'http://localhost:3001/api'
+  static BASE_URL = `${API_BASE_URL}/api`
 
   // Orders
   static async getOrders() {

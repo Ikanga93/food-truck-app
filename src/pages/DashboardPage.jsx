@@ -23,6 +23,7 @@ import { useBusinessConfig } from '../context/BusinessContext'
 import DashboardHeader from '../components/DashboardHeader'
 import ApiService from '../services/ApiService'
 import io from 'socket.io-client'
+import API_BASE_URL from '../config/api.js'
 import './DashboardPage.css'
 
 const DashboardPage = ({ onLogout }) => {
@@ -79,8 +80,8 @@ const DashboardPage = ({ onLogout }) => {
 
   // Initialize Socket.IO and load data
   useEffect(() => {
-    // Initialize Socket.IO
-    const newSocket = io('http://localhost:3001')
+    // Connect to Socket.IO for real-time updates
+    const newSocket = io(API_BASE_URL)
     setSocket(newSocket)
 
     // Load initial data

@@ -18,8 +18,10 @@ const app = express()
 const server = createServer(app)
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST"]
+    origin: process.env.NODE_ENV === 'production' 
+      ? [process.env.FRONTEND_URL, "https://*.railway.app", "https://*.up.railway.app"]
+      : "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
   }
 })
 
@@ -30,8 +32,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_your_stripe_
 app.use(cors())
 app.use(express.json())
 
+// Serve static files from React build in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')))
+}
+
 // Initialize SQLite Database
-const db = new sqlite3.Database('./server/orders.db')
+const dbPath = process.env.NODE_ENV === 'production' ? './orders.db' : './server/orders.db'
+const db = new sqlite3.Database(dbPath)
 
 // Create tables
 db.serialize(() => {
@@ -623,8 +631,21 @@ setInterval(() => {
   )
 }, 60000) // Update every minute
 
-const PORT = process.env.PORT || 3001
+// Serve React app for client-side routing in production
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    // Don't serve React app for API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'API endpoint not found' })
+    }
+    res.sendFile(path.join(__dirname, '../dist/index.html'))
+  })
+}
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
+// Start server
+const PORT = process.env.PORT || 3001
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`)
+  console.log(`📊 Dashboard: http://localhost:${PORT}/api/dashboard`)
+  console.log(`🛒 Orders API: http://localhost:${PORT}/api/orders`)
 }) 

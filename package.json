@@ -8,7 +8,9 @@
     "server": "node server/index.js",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server/index.js",
+    "start:railway": "npm run build && node server/index.js"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.7.0",
@@ -19,12 +21,13 @@
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.8.1",
-    "socket.io": "^4.7.4",
-    "socket.io-client": "^4.7.4",
-    "sqlite3": "^5.1.6",
-    "stripe": "^14.12.0",
-    "uuid": "^9.0.1"
+    "react-router-dom": "^6.26.2",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "sqlite3": "^5.1.7",
+    "stripe": "^17.3.1",
+    "uuid": "^11.0.3",
+    "serve": "^14.2.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",

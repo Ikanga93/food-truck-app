@@ -1,10 +1,12 @@
-const API_BASE_URL = 'http://localhost:3001/api'
+import API_BASE_URL from '../config/api.js'
+
+const API_URL = `${API_BASE_URL}/api`
 
 class ApiService {
   // Create order and get Stripe checkout URL
   async createOrder(orderData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders`, {
+      const response = await fetch(`${API_URL}/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -26,7 +28,7 @@ class ApiService {
   // Verify payment after Stripe checkout
   async verifyPayment(sessionId, orderId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/verify-payment`, {
+      const response = await fetch(`${API_URL}/verify-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +50,7 @@ class ApiService {
   // Get all orders (admin)
   async getAllOrders() {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders`)
+      const response = await fetch(`${API_URL}/orders`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch orders')
@@ -64,7 +66,7 @@ class ApiService {
   // Get specific order
   async getOrder(orderId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}`)
+      const response = await fetch(`${API_URL}/orders/${orderId}`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch order')
@@ -80,7 +82,7 @@ class ApiService {
   // Update order status
   async updateOrderStatus(orderId, status) {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+      const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +104,7 @@ class ApiService {
   // Update payment status
   async updatePaymentStatus(orderId, paymentStatus) {
     try {
-      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/payment`, {
+      const response = await fetch(`${API_URL}/orders/${orderId}/payment`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +128,7 @@ class ApiService {
   // Get all menu items
   async getMenuItems() {
     try {
-      const response = await fetch(`${API_BASE_URL}/menu-items`)
+      const response = await fetch(`${API_URL}/menu-items`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch menu items')
@@ -142,7 +144,7 @@ class ApiService {
   // Add new menu item
   async addMenuItem(menuItem) {
     try {
-      const response = await fetch(`${API_BASE_URL}/menu-items`, {
+      const response = await fetch(`${API_URL}/menu-items`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +166,7 @@ class ApiService {
   // Update menu item
   async updateMenuItem(itemId, updates) {
     try {
-      const response = await fetch(`${API_BASE_URL}/menu-items/${itemId}`, {
+      const response = await fetch(`${API_URL}/menu-items/${itemId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -186,7 +188,7 @@ class ApiService {
   // Delete menu item
   async deleteMenuItem(itemId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/menu-items/${itemId}`, {
+      const response = await fetch(`${API_URL}/menu-items/${itemId}`, {
         method: 'DELETE',
       })
 
@@ -206,7 +208,7 @@ class ApiService {
   // Get all locations
   async getLocations() {
     try {
-      const response = await fetch(`${API_BASE_URL}/locations`)
+      const response = await fetch(`${API_URL}/locations`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch locations')
@@ -222,7 +224,7 @@ class ApiService {
   // Add new location
   async addLocation(location) {
     try {
-      const response = await fetch(`${API_BASE_URL}/locations`, {
+      const response = await fetch(`${API_URL}/locations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,7 +246,7 @@ class ApiService {
   // Update location
   async updateLocation(locationId, updates) {
     try {
-      const response = await fetch(`${API_BASE_URL}/locations/${locationId}`, {
+      const response = await fetch(`${API_URL}/locations/${locationId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -266,7 +268,7 @@ class ApiService {
   // Delete location
   async deleteLocation(locationId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/locations/${locationId}`, {
+      const response = await fetch(`${API_URL}/locations/${locationId}`, {
         method: 'DELETE',
       })
 
