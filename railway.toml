@@ -1,0 +1,15 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm run start:railway"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[[services]]
+name = "web"
+source = "."
+
+[services.variables]
+NODE_ENV = "production"
+PORT = "3001" 
