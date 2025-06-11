@@ -1,55 +1,48 @@
-import React, { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
+import { BusinessProvider } from './context/BusinessContext'
+import { CartProvider } from './context/CartContext'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import Cart from './components/Cart'
+import ProtectedRoute from './components/ProtectedRoute'
 import HomePage from './pages/HomePage'
 import MenuPage from './pages/MenuPage'
 import LocationPage from './pages/LocationPage'
 import AboutPage from './pages/AboutPage'
 import CateringPage from './pages/CateringPage'
+import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
+import OrderTrackingPage from './pages/OrderTrackingPage'
 
-function App() {
-  const [cartItems, setCartItems] = useState([])
+// Component to conditionally render customer layout
+const AppContent = () => {
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const location = useLocation()
 
-  const handleAddToCart = (item, quantityChange = 1) => {
-    setCartItems(prevItems => {
-      const existingItem = prevItems.find(cartItem => cartItem.id === item.id)
-      
-      if (existingItem) {
-        const newQuantity = existingItem.quantity + quantityChange
-        if (newQuantity <= 0) {
-          return prevItems.filter(cartItem => cartItem.id !== item.id)
-        }
-        return prevItems.map(cartItem =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: newQuantity }
-            : cartItem
-        )
-      } else if (quantityChange > 0) {
-        return [...prevItems, { ...item, quantity: quantityChange }]
-      }
-      
-      return prevItems
-    })
-  }
+  // Check if current route is an admin page
+  const isAdminPage = location.pathname.startsWith('/dashboard') || 
+                     location.pathname.startsWith('/admin-login')
 
-  const handleUpdateQuantity = (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
-      handleRemoveItem(itemId)
-      return
+  console.log('App component rendering...')
+
+  // Check for existing authentication on app load
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken')
+    if (token === 'authenticated') {
+      setIsAuthenticated(true)
     }
-    
-    setCartItems(prevItems =>
-      prevItems.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
-    )
+  }, [])
+
+  const handleLogin = (authStatus) => {
+    setIsAuthenticated(authStatus)
   }
 
-  const handleRemoveItem = (itemId) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== itemId))
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken')
+    localStorage.removeItem('adminUser')
+    setIsAuthenticated(false)
   }
 
   const handleCartOpen = () => {
@@ -61,58 +54,88 @@ function App() {
   }
 
   return (
-    <Router>
       <div className="App">
+      {/* Only show customer header on customer pages */}
+      {!isAdminPage && (
         <Header 
-          cartItems={cartItems} 
           onCartOpen={handleCartOpen}
         />
+      )}
         
         <Routes>
           <Route 
             path="/" 
-            element={
-              <HomePage 
-                onAddToCart={handleAddToCart}
-                cartItems={cartItems}
-              />
-            } 
+            element={<HomePage />} 
           />
           <Route 
             path="/menu" 
-            element={
-              <MenuPage 
-                onAddToCart={handleAddToCart}
-                cartItems={cartItems}
-              />
-            } 
+            element={<MenuPage />} 
           />
-          <Route 
-            path="/about" 
-            element={<AboutPage />} 
-          />
-          <Route 
-            path="/catering" 
-            element={<CateringPage />} 
-          />
+        <Route 
+          path="/about" 
+          element={<AboutPage />} 
+        />
+        <Route 
+          path="/catering" 
+          element={<CateringPage />} 
+        />
           <Route 
             path="/location" 
             element={<LocationPage />} 
           />
+        <Route 
+          path="/admin-login" 
+          element={<LoginPage onLogin={handleLogin} />} 
+        />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <DashboardPage onLogout={handleLogout} />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/order-tracking" 
+          element={<OrderTrackingPage />} 
+        />
         </Routes>
         
-        <Footer />
+      {/* Only show customer footer on customer pages */}
+      {!isAdminPage && <Footer />}
         
+      {/* Only show cart on customer pages */}
+      {!isAdminPage && (
         <Cart
           isOpen={isCartOpen}
           onClose={handleCartClose}
-          cartItems={cartItems}
-          onUpdateQuantity={handleUpdateQuantity}
-          onRemoveItem={handleRemoveItem}
         />
+      )}
       </div>
-    </Router>
   )
+}
+
+function App() {
+  try {
+    return (
+      <BusinessProvider>
+        <CartProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </CartProvider>
+      </BusinessProvider>
+    )
+  } catch (error) {
+    console.error('Error in App component:', error)
+    return (
+      <div style={{ padding: '20px', backgroundColor: 'white', minHeight: '100vh' }}>
+        <h1 style={{ color: 'red' }}>Error in App Component</h1>
+        <p>Error: {error.message}</p>
+        <pre>{error.stack}</pre>
+      </div>
+    )
+  }
 }
 
 export default App 

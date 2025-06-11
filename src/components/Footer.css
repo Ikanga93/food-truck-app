@@ -87,7 +87,9 @@
 }
 
 .footer-bottom {
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding-top: 30px;
   border-top: 1px solid #555;
 }
@@ -95,6 +97,23 @@
 .footer-bottom p {
   color: #CCCCCC;
   font-size: 0.9rem;
+  margin: 0;
+}
+
+.admin-access {
+  color: #666;
+  text-decoration: none;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.admin-access:hover {
+  opacity: 1;
+  color: #999;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 @media (max-width: 768px) {
@@ -118,5 +137,11 @@
     width: 45px;
     height: 45px;
     font-size: 1.3rem;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
   }
 } 

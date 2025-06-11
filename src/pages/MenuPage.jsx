@@ -1,156 +1,61 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Plus, Minus, ShoppingCart, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useCart } from '../context/CartContext'
+import ApiService from '../services/ApiService'
 import './MenuPage.css'
 
-const MenuPage = ({ onAddToCart, cartItems }) => {
-  const [activeCategory, setActiveCategory] = useState('bestsellers')
+const MenuPage = () => {
+  const { addToCart, updateQuantity, cartItems } = useCart()
+  const [activeCategory, setActiveCategory] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [menuItems, setMenuItems] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const menuItems = {
-    bestsellers: [
-      {
-        id: 'tortas',
-        name: "Tortas",
-        price: 8.00,
-        description: "Avocado, Lettuce, Tomato, Onion, Jalapeños, Mayo & Cheese",
-        emoji: "🥙",
-        isBestSeller: true,
-        ingredients: ["Avocado", "Lettuce", "Tomato", "Onion", "Jalapeños", "Mayo", "Cheese"]
-      },
-      {
-        id: 'mexican-corn',
-        name: "Mexican Corn",
-        price: 3.00,
-        description: "Cheese, Mayo & Chili Pepper",
-        emoji: "🌽",
-        ingredients: ["Corn", "Cheese", "Mayo", "Chili Pepper"]
-      },
-      {
-        id: 'tacos',
-        name: "Tacos",
-        price: 3.00,
-        description: "Mexican: Cilantro & Onion | American: Lettuce, Tomato, Onion & Cheese",
-        emoji: "🌮",
-        ingredients: ["Choice of Meat", "Cilantro", "Onion", "Lettuce", "Tomato", "Cheese"]
+  useEffect(() => {
+    const loadMenuItems = async () => {
+      try {
+        const items = await ApiService.getMenuItems()
+        // Filter only available items
+        const availableItems = items.filter(item => item.available)
+        setMenuItems(availableItems)
+      } catch (error) {
+        console.error('Error loading menu items:', error)
+        setError('Failed to load menu items')
+        // Fallback to default items
+        setMenuItems([])
+      } finally {
+        setIsLoading(false)
       }
-    ],
-    tacos: [
-      {
-        id: 'taco-mexican',
-        name: "Tacos - Mexican Style",
-        price: 3.00,
-        description: "Cilantro & Onion with your choice of meat",
-        emoji: "🌮",
-        ingredients: ["Choice of Meat", "Cilantro", "Onion", "Corn Tortilla"]
-      },
-      {
-        id: 'taco-american',
-        name: "Tacos - American Style",
-        price: 3.00,
-        description: "Lettuce, Tomato, Onion & Cheese with your choice of meat",
-        emoji: "🌮",
-        ingredients: ["Choice of Meat", "Lettuce", "Tomato", "Onion", "Cheese", "Corn Tortilla"]
-      }
-    ],
-    burritos: [
-      {
-        id: 'burrito-regular',
-        name: "Burritos",
-        price: 8.00,
-        description: "Lettuce, Tomato, Onion, Cheese & Sour Cream",
-        emoji: "🌯",
-        ingredients: ["Choice of Meat", "Lettuce", "Tomato", "Onion", "Cheese", "Sour Cream"]
-      },
-      {
-        id: 'breakfast-burrito-ham',
-        name: "Breakfast Burritos - Ham & Egg",
-        price: 8.00,
-        description: "Ham & Egg with Lettuce, Tomato, Onion, Cheese & Sour Cream",
-        emoji: "🍳",
-        ingredients: ["Ham", "Egg", "Lettuce", "Tomato", "Onion", "Cheese", "Sour Cream"]
-      },
-      {
-        id: 'breakfast-burrito-turkey',
-        name: "Breakfast Burritos - Turkey & Egg",
-        price: 8.00,
-        description: "Turkey & Egg with Lettuce, Tomato, Onion, Cheese & Sour Cream",
-        emoji: "🍳",
-        ingredients: ["Turkey", "Egg", "Lettuce", "Tomato", "Onion", "Cheese", "Sour Cream"]
-      },
-      {
-        id: 'breakfast-burrito-chorizo',
-        name: "Breakfast Burritos - Chorizo & Egg",
-        price: 8.00,
-        description: "Chorizo & Egg with Lettuce, Tomato, Onion, Cheese & Sour Cream",
-        emoji: "🍳",
-        ingredients: ["Chorizo", "Egg", "Lettuce", "Tomato", "Onion", "Cheese", "Sour Cream"]
-      }
-    ],
-    quesadillas: [
-      {
-        id: 'quesadilla-cheese',
-        name: "Quesadillas",
-        price: 8.00,
-        description: "Mixed Mozzarella & Provolone Cheese or Try Turkey & Cheese",
-        emoji: "🧀",
-        ingredients: ["Mozzarella", "Provolone", "Flour Tortilla"]
-      }
-    ],
-    sides: [
-      {
-        id: 'nachos',
-        name: "Nachos",
-        price: 9.00,
-        description: "Lettuce, Tomato, Onion, Jalapeños, Cheese Sauce & Sour Cream",
-        emoji: "🧀",
-        ingredients: ["Tortilla Chips", "Lettuce", "Tomato", "Onion", "Jalapeños", "Cheese Sauce", "Sour Cream"]
-      },
-      {
-        id: 'mexican-corn-side',
-        name: "Mexican Corn",
-        price: 3.00,
-        description: "Cheese, Mayo & Chili Pepper",
-        emoji: "🌽",
-        ingredients: ["Grilled Corn", "Cheese", "Mayo", "Chili Pepper"]
-      }
-    ],
-    drinks: [
-      {
-        id: 'jarritos',
-        name: "Jarritos Mexican Soda",
-        price: 3.00,
-        description: "Authentic Mexican soda in various flavors",
-        emoji: "🥤",
-        ingredients: ["Mexican Soda"]
-      },
-      {
-        id: 'coca-cola',
-        name: "Coca Cola",
-        price: 1.50,
-        description: "Ice Cold Coca Cola",
-        emoji: "🥤",
-        ingredients: ["Coca Cola"]
-      },
-      {
-        id: 'bottled-water',
-        name: "Bottled Water",
-        price: 1.50,
-        description: "Refreshing bottled water",
-        emoji: "💧",
-        ingredients: ["Bottled Water"]
-      }
-    ]
-  }
+    }
 
+    loadMenuItems()
+  }, [])
+
+  // Get unique categories from menu items
   const categories = [
-    { id: 'bestsellers', name: 'Best Sellers', emoji: '⭐' },
-    { id: 'tacos', name: 'Tacos', emoji: '🌮' },
-    { id: 'burritos', name: 'Burritos', emoji: '🌯' },
-    { id: 'quesadillas', name: 'Quesadillas', emoji: '🧀' },
-    { id: 'sides', name: 'Sides', emoji: '🌽' },
-    { id: 'drinks', name: 'Drinks', emoji: '🥤' }
+    { id: 'all', name: 'All Items', emoji: '🍽️' },
+    ...Array.from(new Set(menuItems.map(item => item.category)))
+      .map(category => ({
+        id: category.toLowerCase(),
+        name: category,
+        emoji: getCategoryEmoji(category)
+      }))
   ]
+
+  function getCategoryEmoji(category) {
+    const emojiMap = {
+      'Tacos': '🌮',
+      'Burritos': '🌯',
+      'Breakfast': '🍳',
+      'Quesadillas': '🧀',
+      'Tortas': '🥙',
+      'Sides': '🌽',
+      'Drinks': '🥤'
+    }
+    return emojiMap[category] || '🍽️'
+  }
 
   const getItemQuantity = (itemId) => {
     const cartItem = cartItems.find(item => item.id === itemId)
@@ -158,14 +63,48 @@ const MenuPage = ({ onAddToCart, cartItems }) => {
   }
 
   const handleAddToCart = (item) => {
-    onAddToCart(item)
+    addToCart(item)
   }
 
-  // Filter items based on search term
-  const filteredItems = menuItems[activeCategory].filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const handleQuantityChange = (item, change) => {
+    const currentQuantity = getItemQuantity(item.id)
+    const newQuantity = currentQuantity + change
+    
+    if (newQuantity <= 0) {
+      updateQuantity(item.id, 0) // This will remove the item
+    } else {
+      updateQuantity(item.id, newQuantity)
+    }
+  }
+
+  // Filter items based on category and search term
+  const filteredItems = menuItems.filter(item => {
+    const matchesCategory = activeCategory === 'all' || 
+                           item.category.toLowerCase() === activeCategory
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    return matchesCategory && matchesSearch
+  })
+
+  if (isLoading) {
+    return (
+      <div className="menu-page">
+        <div className="menu-hero">
+          <div className="container">
+            <Link to="/" className="back-link">
+              <ArrowLeft size={20} />
+              Back to Home
+            </Link>
+            <h1 className="menu-page-title">Fernando's Menu</h1>
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <p>Loading menu...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="menu-page">
@@ -194,6 +133,12 @@ const MenuPage = ({ onAddToCart, cartItems }) => {
 
       <div className="menu-content">
         <div className="container">
+          {error && (
+            <div className="error-message">
+              <p>{error}</p>
+            </div>
+          )}
+
           <div className="menu-categories">
             {categories.map(category => (
               <button
@@ -202,54 +147,41 @@ const MenuPage = ({ onAddToCart, cartItems }) => {
                 onClick={() => setActiveCategory(category.id)}
               >
                 <span className="category-emoji">{category.emoji}</span>
-                {category.name}
+                <span className="category-name">{category.name}</span>
               </button>
             ))}
           </div>
 
-          <div className="menu-grid">
-            {filteredItems.length > 0 ? (
+          <div className="menu-items-grid">
+            {filteredItems.length === 0 ? (
+              <div className="no-items">
+                <p>No items found matching your criteria.</p>
+              </div>
+            ) : (
               filteredItems.map((item) => (
-                <div key={item.id} className="menu-card">
-                  <div className="menu-card-header">
-                    <div className="item-emoji">{item.emoji}</div>
-                    {item.isBestSeller && <span className="best-seller-badge">Best Seller</span>}
-                  </div>
-                  
-                  <div className="menu-card-content">
-                    <h3 className="item-name">{item.name}</h3>
-                    <p className="item-description">{item.description}</p>
-                    
-                    <div className="ingredients">
-                      <h4>Ingredients:</h4>
-                      <div className="ingredient-tags">
-                        {item.ingredients.map((ingredient, index) => (
-                          <span key={index} className="ingredient-tag">
-                            {ingredient}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="menu-card-footer">
-                    <div className="price-section">
+                <div key={item.id} className="menu-item-card">
+                  <div className="item-emoji-large">{item.emoji}</div>
+                  <div className="item-details">
+                    <div className="item-header">
+                      <h3 className="item-name">{item.name}</h3>
                       <span className="item-price">${item.price.toFixed(2)}</span>
                     </div>
+                    <p className="item-description">{item.description}</p>
+                    <div className="item-category-badge">{item.category}</div>
                     
                     <div className="item-actions">
                       {getItemQuantity(item.id) > 0 ? (
                         <div className="quantity-controls">
                           <button 
                             className="quantity-btn"
-                            onClick={() => onAddToCart(item, -1)}
+                            onClick={() => handleQuantityChange(item, -1)}
                           >
                             <Minus size={16} />
                           </button>
                           <span className="quantity">{getItemQuantity(item.id)}</span>
                           <button 
                             className="quantity-btn"
-                            onClick={() => onAddToCart(item, 1)}
+                            onClick={() => handleQuantityChange(item, 1)}
                           >
                             <Plus size={16} />
                           </button>
@@ -267,17 +199,6 @@ const MenuPage = ({ onAddToCart, cartItems }) => {
                   </div>
                 </div>
               ))
-            ) : (
-              <div className="no-results">
-                <div className="no-results-emoji">🔍</div>
-                <p>No items found matching "{searchTerm}"</p>
-                <button 
-                  className="clear-search-btn"
-                  onClick={() => setSearchTerm('')}
-                >
-                  Clear Search
-                </button>
-              </div>
             )}
           </div>
         </div>

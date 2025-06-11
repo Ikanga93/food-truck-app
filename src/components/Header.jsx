@@ -1,12 +1,16 @@
 import React, { useState } from 'react'
 import { Menu, X, ShoppingCart } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import { useBusinessConfig } from '../context/BusinessContext'
+import { useCart } from '../context/CartContext'
 import Logo from './Logo'
 import './Header.css'
 
-const Header = ({ cartItems, onCartOpen }) => {
+const Header = ({ onCartOpen }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const location = useLocation()
+  const { config } = useBusinessConfig()
+  const { getCartItemCount } = useCart()
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
@@ -26,7 +30,7 @@ const Header = ({ cartItems, onCartOpen }) => {
     setIsMenuOpen(false)
   }
 
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+  const totalItems = getCartItemCount()
 
   return (
     <header className="header">
@@ -34,26 +38,30 @@ const Header = ({ cartItems, onCartOpen }) => {
         <div className="header-content">
           <Link to="/" className="logo">
             <div className="logo-text">
-              <h1>Fernando's</h1>
-              <span>Auténtica Comida Mexicana</span>
+              <h1>{config.businessName}</h1>
+              <span>{config.tagline}</span>
             </div>
-            <Logo size={50} className="logo-image" />
+            {config.logo.showInHeader && <Logo size={50} className="logo-image" />}
           </Link>
           
           <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
             <Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link>
             <Link to="/menu" onClick={() => setIsMenuOpen(false)}>Place Order</Link>
             <Link to="/about" onClick={() => setIsMenuOpen(false)}>About</Link>
-            <Link to="/catering" onClick={() => setIsMenuOpen(false)}>Events</Link>
+            {config.features.catering && (
+              <Link to="/catering" onClick={() => setIsMenuOpen(false)}>Events</Link>
+            )}
             <Link to="/location" onClick={() => setIsMenuOpen(false)}>Find Us</Link>
             <a href="#contact" onClick={() => scrollToSection('contact')}>Contact</a>
           </nav>
 
           <div className="header-actions">
+            {config.features.onlineOrdering && (
             <button className="cart-btn" onClick={onCartOpen}>
               <ShoppingCart size={20} />
               {totalItems > 0 && <span className="cart-count">{totalItems}</span>}
             </button>
+            )}
             
             <button className="menu-toggle" onClick={toggleMenu}>
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}

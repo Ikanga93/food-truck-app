@@ -90,7 +90,7 @@ const Logo = ({ size = 50, className = '' }) => {
           <rect x="2" y="2" width="12" height="2" fill="#228B22"/>
           <rect x="3" y="4" width="10" height="1" fill="#FF6347"/>
           <rect x="2" y="5" width="12" height="1" fill="#FFD700"/>
-        </g>
+      </g>
       </g>
       
       {/* Left hand waving */}

@@ -3,14 +3,11 @@ import Hero from '../components/Hero'
 import Menu from '../components/Menu'
 import Contact from '../components/Contact'
 
-const HomePage = ({ onAddToCart, cartItems }) => {
+const HomePage = () => {
   return (
     <>
       <Hero />
-      <Menu 
-        onAddToCart={onAddToCart}
-        cartItems={cartItems}
-      />
+      <Menu />
       
       {/* Why Choose Fernando's Section */}
       <section className="why-choose-us section">

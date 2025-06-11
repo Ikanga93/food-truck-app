@@ -1,129 +1,116 @@
-import React from 'react'
-import { Plus, Minus, ShoppingCart } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { ShoppingCart, Plus, Minus } from 'lucide-react'
+import { useCart } from '../context/CartContext'
+import ApiService from '../services/ApiService'
 import './Menu.css'
 
-const Menu = ({ onAddToCart, cartItems }) => {
-  const bestSellers = [
-    {
-      id: 'tortas',
-      name: "Tortas",
-      price: 8.00,
-      description: "Avocado, lettuce, tomato, onion, jalapeños, mayo and cheese.",
-      emoji: "🥙",
-      isBestSeller: true
-    },
-    {
-      id: 'mexican-corn',
-      name: "Mexican Corn",
-      price: 3.00,
-      description: "Cheese, mayo and chili pepper.",
-      emoji: "🌽"
-    },
-    {
-      id: 'tacos',
-      name: "Tacos",
-      price: 3.00,
-      description: "Mexican: Cilantro & Onion | American: Lettuce, Tomato, Onion & Cheese",
-      emoji: "🌮"
-    }
-  ]
+const Menu = () => {
+  const { addToCart } = useCart()
+  const [menuItems, setMenuItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const getItemQuantity = (itemId) => {
-    const cartItem = cartItems.find(item => item.id === itemId)
-    return cartItem ? cartItem.quantity : 0
+  useEffect(() => {
+    loadMenuItems()
+  }, [])
+
+  const loadMenuItems = async () => {
+    try {
+      setLoading(true)
+      const items = await ApiService.getMenuItems()
+      // Only show available items to customers
+      setMenuItems(items.filter(item => item.available))
+    } catch (error) {
+      console.error('Error loading menu:', error)
+      setError('Failed to load menu. Please try again later.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleAddToCart = (item) => {
-    onAddToCart(item)
+  // Group items by category
+  const groupedItems = menuItems.reduce((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = []
+    }
+    acc[item.category].push(item)
+    return acc
+  }, {})
+
+  if (loading) {
+    return (
+      <section className="menu-section" id="menu">
+        <div className="container">
+          <h2>Our Menu</h2>
+          <div className="loading-state">
+            <p>Loading delicious menu items...</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section className="menu-section" id="menu">
+        <div className="container">
+          <h2>Our Menu</h2>
+          <div className="error-state">
+            <p>{error}</p>
+            <button onClick={loadMenuItems} className="retry-btn">
+              Try Again
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (menuItems.length === 0) {
+    return (
+      <section className="menu-section" id="menu">
+        <div className="container">
+          <h2>Our Menu</h2>
+          <div className="empty-menu">
+            <p>We're updating our menu. Please check back soon!</p>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   return (
-    <section id="menu" className="menu section">
+    <section className="menu-section" id="menu">
       <div className="container">
-        <h2 className="section-title">Our Best Sellers</h2>
-        <p className="section-subtitle">
-          Try our most popular authentic Mexican dishes
-        </p>
-
-        <div className="menu-items">
-          {bestSellers.map((item) => (
-            <div key={item.id} className="menu-item card">
-              <div className="item-emoji">{item.emoji}</div>
-              <div className="item-content">
-                <div className="item-header">
-                  <div className="item-title-section">
-                    <h3 className="item-name">{item.name}</h3>
-                    {item.isBestSeller && <span className="best-seller-badge">Best Seller</span>}
-                  </div>
-                  <span className="item-price">${item.price.toFixed(2)}</span>
-                </div>
-                <p className="item-description">{item.description}</p>
-                
-                <div className="item-actions">
-                  {getItemQuantity(item.id) > 0 ? (
-                    <div className="quantity-controls">
-                      <button 
-                        className="quantity-btn"
-                        onClick={() => onAddToCart(item, -1)}
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="quantity">{getItemQuantity(item.id)}</span>
-                      <button 
-                        className="quantity-btn"
-                        onClick={() => onAddToCart(item, 1)}
-                      >
-                        <Plus size={16} />
-                      </button>
+        <h2>Our Menu</h2>
+        <p className="menu-subtitle">Authentic Mexican flavors made fresh daily</p>
+        
+        {Object.entries(groupedItems).map(([category, items]) => (
+          <div key={category} className="menu-category">
+            <h3 className="category-title">{category}</h3>
+            <div className="menu-grid">
+              {items.map(item => (
+                <div key={item.id} className="menu-item">
+                  <div className="menu-item-header">
+                    <div className="menu-emoji">{item.emoji}</div>
+                    <div className="menu-item-info">
+                      <h4>{item.name}</h4>
+                      <p className="menu-description">{item.description}</p>
+                      <span className="menu-price">${item.price.toFixed(2)}</span>
                     </div>
-                  ) : (
-                    <button 
-                      className="add-to-cart-btn"
-                      onClick={() => handleAddToCart(item)}
-                    >
-                      <ShoppingCart size={16} />
-                      Add to Cart
-                    </button>
-                  )}
+                  </div>
+                  <button 
+                    className="add-to-cart-btn"
+                    onClick={() => addToCart(item)}
+                  >
+                    <ShoppingCart size={16} />
+                    Add to Cart
+                  </button>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="menu-cta">
-          <Link to="/menu" className="btn btn-primary">
-            Place Order
-          </Link>
-        </div>
-
-        <div className="menu-info-section">
-          <div className="info-cards">
-            <div className="info-card">
-              <div className="info-icon">🚚</div>
-              <h4>Fresh Daily</h4>
-              <p>All our ingredients are prepared fresh every morning using authentic Mexican recipes</p>
-            </div>
-            <div className="info-card">
-              <div className="info-icon">⏰</div>
-              <h4>Quick Service</h4>
-              <p>Fast, friendly service without compromising on quality or authenticity</p>
-            </div>
-            <div className="info-card">
-              <div className="info-icon">🌶️</div>
-              <h4>Authentic Flavors</h4>
-              <p>Traditional Mexican spices and cooking methods passed down through generations</p>
+              ))}
             </div>
           </div>
-        </div>
-
-        <div className="event-booking-note">
-          <p>Need catering for your event? We bring Fernando's delicious food directly to you!</p>
-          <Link to="/catering" className="btn btn-secondary">
-            Book Us for Your Event
-          </Link>
-        </div>
+        ))}
       </div>
     </section>
   )

@@ -333,4 +333,41 @@
   .info-icon {
     font-size: 2rem;
   }
+}
+
+/* Loading and Error States */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-light);
+}
+
+.loading-state .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top: 4px solid var(--primary-red);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  background: #ffebee;
+  border: 1px solid #f44336;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #c62828;
+}
+
+.error-message p {
+  margin: 0;
+  font-weight: 500;
 } 

@@ -28,7 +28,7 @@ const Hero = () => {
               Authentic Mexican street food made with love and tradition. 
               Experience the true flavors of Mexico right here in your neighborhood.
             </p>
-
+            
             <div className="hero-buttons">
               <Link to="/menu" className="btn btn-primary btn-large">
                 Place Order

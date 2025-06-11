@@ -1,14 +1,48 @@
-import React, { useState } from 'react'
-import { X, Plus, Minus, ShoppingCart, CreditCard } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { X, Plus, Minus, ShoppingCart, CreditCard, MapPin, Truck, Building } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import ApiService from '../services/ApiService'
+import { useCart } from '../context/CartContext'
 import './Cart.css'
 
-const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) => {
+const Cart = ({ isOpen, onClose }) => {
+  const { cartItems, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart()
   const [isCheckingOut, setIsCheckingOut] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState('')
+  const [locations, setLocations] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
     phone: '',
     email: ''
   })
+
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (isOpen) {
+      loadLocations()
+    }
+  }, [isOpen])
+
+  const loadLocations = async () => {
+    try {
+      const locationsData = await ApiService.getLocations()
+      // Only show active locations to customers
+      const activeLocations = locationsData.filter(location => location.status === 'active')
+      setLocations(activeLocations)
+      
+      // Auto-select first location if only one available
+      if (activeLocations.length === 1) {
+        setSelectedLocation(activeLocations[0].id)
+      }
+    } catch (error) {
+      console.error('Error loading locations:', error)
+      setError('Failed to load pickup locations')
+    }
+  }
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
   const tax = subtotal * 0.0875 // 8.75% tax
@@ -21,13 +55,64 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
     })
   }
 
-  const handleCheckout = (e) => {
+  const handleLocationChange = (e) => {
+    setSelectedLocation(e.target.value)
+  }
+
+  const getLocationIcon = (type) => {
+    switch (type) {
+      case 'mobile':
+        return <Truck size={16} />
+      case 'fixed':
+        return <Building size={16} />
+      default:
+        return <MapPin size={16} />
+    }
+  }
+
+  const selectedLocationObj = locations.find(loc => loc.id === selectedLocation)
+
+  const handleCheckout = async (e) => {
     e.preventDefault()
-    // Simulate checkout process
-    alert(`¡Gracias ${customerInfo.name}! Your order for $${total.toFixed(2)} has been placed. We'll call you at ${customerInfo.phone} when it's ready!`)
-    setIsCheckingOut(false)
-    setCustomerInfo({ name: '', phone: '', email: '' })
-    onClose()
+    
+    if (!selectedLocation) {
+      alert('Please select a pickup location')
+      return
+    }
+
+    if (!customerInfo.name.trim() || !customerInfo.phone.trim()) {
+      alert('Please fill in all required fields')
+      return
+    }
+
+    setIsProcessing(true)
+
+    try {
+      // Create order and get Stripe checkout URL
+      const orderData = {
+        customerName: customerInfo.name,
+        customerPhone: customerInfo.phone,
+        customerEmail: customerInfo.email,
+        items: cartItems,
+        subtotal,
+        tax,
+        total,
+        locationId: selectedLocation
+      }
+
+      const response = await ApiService.createOrder(orderData)
+      
+      // Store order ID for tracking
+      localStorage.setItem('currentOrderId', response.orderId)
+      
+      // Redirect to Stripe Checkout
+      window.location.href = response.checkoutUrl
+      
+    } catch (error) {
+      console.error('Error creating order:', error)
+      alert('Failed to create order. Please try again.')
+      setIsProcessing(false)
+    }
   }
 
   if (!isOpen) return null
@@ -69,14 +154,14 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
                       <div className="quantity-controls">
                         <button 
                           className="quantity-btn"
-                          onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         >
                           <Minus size={14} />
                         </button>
                         <span className="quantity">{item.quantity}</span>
                         <button 
                           className="quantity-btn"
-                          onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         >
                           <Plus size={14} />
                         </button>
@@ -86,7 +171,7 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
                       </div>
                       <button 
                         className="remove-btn"
-                        onClick={() => onRemoveItem(item.id)}
+                        onClick={() => removeFromCart(item.id)}
                       >
                         <X size={16} />
                       </button>
@@ -120,6 +205,44 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
                 </button>
               ) : (
                 <form className="checkout-form" onSubmit={handleCheckout}>
+                  <h3>Pickup Location</h3>
+                  
+                  {loading ? (
+                    <div className="loading-locations">
+                      <div className="spinner"></div>
+                      <p>Loading locations...</p>
+                    </div>
+                  ) : (
+                    <div className="form-group location-selection">
+                      {locations.map((location) => (
+                        <label key={location.id} className="location-option">
+                          <input
+                            type="radio"
+                            name="location"
+                            value={location.id}
+                            checked={selectedLocation === location.id}
+                            onChange={handleLocationChange}
+                          />
+                          <div className="location-info">
+                            <div className="location-header">
+                              {getLocationIcon(location.type)}
+                              <span className="location-name">{location.name}</span>
+                            </div>
+                            <p className="location-description">{location.description}</p>
+                            {location.current_location && (
+                              <p className="location-address">
+                                📍 {location.current_location}
+                              </p>
+                            )}
+                            {location.schedule && (
+                              <p className="location-note">🕒 {location.schedule}</p>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
                   <h3>Customer Information</h3>
                   
                   <div className="form-group">
@@ -159,11 +282,26 @@ const Cart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem }) =>
                       type="button" 
                       className="back-btn"
                       onClick={() => setIsCheckingOut(false)}
+                      disabled={isProcessing}
                     >
                       Back to Cart
                     </button>
-                    <button type="submit" className="place-order-btn">
-                      Place Order - ${total.toFixed(2)}
+                    <button 
+                      type="submit" 
+                      className="place-order-btn"
+                      disabled={isProcessing || loading}
+                    >
+                      {isProcessing ? (
+                        <>
+                          <div className="spinner"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard size={18} />
+                          Continue to Payment - ${total.toFixed(2)}
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
