@@ -116,6 +116,10 @@ const AppContent = () => {
           element={<OrderTracking />} 
         />
         <Route 
+          path="/order-tracking" 
+          element={<OrderTracking />} 
+        />
+        <Route 
           path="/orders" 
           element={
             <CustomerProtectedRoute>

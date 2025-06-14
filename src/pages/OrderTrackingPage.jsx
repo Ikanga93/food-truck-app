@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react'
-import { CheckCircle, Clock, ChefHat, Bell, MapPin, Phone, AlertCircle } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { CheckCircle, Clock, ChefHat, Bell, MapPin, AlertCircle } from 'lucide-react'
+import { useSearchParams, useParams } from 'react-router-dom'
 import ApiService from '../services/api'
 import SocketService from '../services/socket'
 import './OrderTrackingPage.css'
 
 const OrderTrackingPage = () => {
   const [searchParams] = useSearchParams()
+  const { orderId: urlOrderId } = useParams()
   const [order, setOrder] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [paymentVerified, setPaymentVerified] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
 
-  // Get order ID and session ID from URL params or localStorage
-  const orderId = searchParams.get('order_id') || searchParams.get('orderId') || localStorage.getItem('currentOrderId')
+  // Get order ID from URL path parameter, query parameter, or localStorage
+  const orderId = urlOrderId || searchParams.get('order_id') || searchParams.get('orderId') || localStorage.getItem('currentOrderId')
   const sessionId = searchParams.get('session_id')
 
   useEffect(() => {
@@ -71,32 +73,76 @@ const OrderTrackingPage = () => {
     }
   }, [orderId, sessionId, paymentVerified])
 
-  const getStatusStep = (status) => {
-    switch (status) {
-      case 'pending_payment': return 0
-      case 'pending': return 1
-      case 'confirmed': return 2
-      case 'cooking': return 3
-      case 'ready': return 4
-      case 'completed': return 5
-      default: return 1
-    }
+  // Helper function to get current time in Central Time
+  const getCurrentCentralTime = () => {
+    return new Date(new Date().toLocaleString("en-US", {timeZone: "America/Chicago"}))
   }
 
   const formatTime = (dateString) => {
     return new Date(dateString).toLocaleTimeString([], { 
       hour: '2-digit', 
-      minute: '2-digit' 
+      minute: '2-digit',
+      timeZone: 'America/Chicago'
     })
   }
 
-  const calculateEstimatedReady = (order) => {
-    if (!order || order.status !== 'cooking') return null
+  const getEstimatedTimeRemaining = (order) => {
+    if (!order) return null
     
-    const orderTime = new Date(order.order_time)
-    const estimatedReady = new Date(orderTime.getTime() + order.estimated_time * 60000)
-    return estimatedReady
+    const estimatedTime = order.estimated_time || 20 // Default to 20 minutes
+    const orderTime = new Date(order.orderTime || order.order_time)
+    const currentCentralTime = currentTime
+    const estimatedReady = new Date(orderTime.getTime() + estimatedTime * 60000)
+    const remaining = Math.max(0, Math.floor((estimatedReady.getTime() - currentCentralTime.getTime()) / 1000))
+    
+    if (remaining <= 0) return 'Ready now!'
+    
+    const minutes = Math.floor(remaining / 60)
+    const seconds = remaining % 60
+    
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
+
+  const getProgressPercentage = (order) => {
+    if (!order) return 0
+    
+    const estimatedTime = order.estimated_time || 20 // Default to 20 minutes
+    const orderTime = new Date(order.orderTime || order.order_time)
+    const currentCentralTime = currentTime
+    const elapsed = (currentCentralTime.getTime() - orderTime.getTime()) / 1000 / 60 // elapsed time in minutes
+    const progress = Math.min(100, Math.max(0, (elapsed / estimatedTime) * 100))
+    
+    return Math.round(progress)
+  }
+
+  const getElapsedTime = (order) => {
+    if (!order) return null
+    
+    const orderTime = new Date(order.orderTime || order.order_time)
+    const currentCentralTime = currentTime
+    const elapsed = Math.floor((currentCentralTime.getTime() - orderTime.getTime()) / 1000 / 60) // in minutes
+    
+    if (elapsed < 60) {
+      return `${elapsed} minutes ago`
+    } else {
+      const hours = Math.floor(elapsed / 60)
+      const minutes = elapsed % 60
+      return `${hours}h ${minutes}m ago`
+    }
+  }
+
+  const formatPrice = (price) => {
+    return `$${parseFloat(price).toFixed(2)}`
+  }
+
+  // Timer effect for live updates using Central Time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(getCurrentCentralTime())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
 
   if (isLoading) {
     return (
@@ -129,51 +175,36 @@ const OrderTrackingPage = () => {
     )
   }
 
-  const currentStep = getStatusStep(order.status)
-  const estimatedReady = calculateEstimatedReady(order)
-
-  const steps = [
-    { 
-      id: 1, 
-      title: 'Order Placed', 
-      description: 'Your order has been received',
-      icon: <CheckCircle size={24} />,
-      time: formatTime(order.order_time)
-    },
-    { 
-      id: 2, 
-      title: 'Payment Confirmed', 
-      description: 'Payment processed successfully',
-      icon: <CheckCircle size={24} />,
-      time: currentStep >= 2 ? formatTime(order.order_time) : null
-    },
-    { 
-      id: 3, 
-      title: 'Preparing Food', 
-      description: 'Your delicious meal is being prepared',
-      icon: <ChefHat size={24} />,
-      time: currentStep >= 3 ? formatTime(order.order_time) : null
-    },
-    { 
-      id: 4, 
-      title: 'Ready for Pickup', 
-      description: 'Your order is ready! Come get it while it\'s hot',
-      icon: <Bell size={24} />,
-      time: currentStep >= 4 ? (estimatedReady ? formatTime(estimatedReady) : 'Ready now!') : null
-    },
-    { 
-      id: 5, 
-      title: 'Order Complete', 
-      description: 'Thank you for choosing Fernando\'s!',
-      icon: <CheckCircle size={24} />,
-      time: currentStep >= 5 ? formatTime(new Date()) : null
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'cooking':
+        return <ChefHat size={24} />
+      case 'ready':
+        return <Bell size={24} />
+      case 'confirmed':
+        return <CheckCircle size={24} />
+      case 'completed':
+        return <CheckCircle size={24} />
+      default:
+        return <Clock size={24} />
     }
-  ]
+  }
 
-  const getStepStatus = (stepId) => {
-    if (stepId < currentStep) return 'completed'
-    if (stepId === currentStep) return 'active'
-    return 'pending'
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'pending_payment':
+        return 'Awaiting Payment'
+      case 'confirmed':
+        return 'Order Confirmed'
+      case 'cooking':
+        return 'Cooking Your Order'
+      case 'ready':
+        return 'Ready for Pickup'
+      case 'completed':
+        return 'Order Complete'
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1)
+    }
   }
 
   return (
@@ -182,12 +213,8 @@ const OrderTrackingPage = () => {
         <div className="tracking-header">
           <h1>Order Tracking</h1>
           <div className="order-info">
-            <div className="order-number">
-              <strong>Order #{order.id}</strong>
-            </div>
-            <div className="order-customer">
-              <span>for {order.customer_name}</span>
-            </div>
+            <span className="order-id">Order #{order.id}</span>
+            <span className="order-time">Placed {getElapsedTime(order)}</span>
           </div>
         </div>
 
@@ -199,161 +226,101 @@ const OrderTrackingPage = () => {
           </div>
         )}
 
-        {/* Payment Pending Warning */}
-        {order.status === 'pending_payment' && (
-          <div className="payment-pending-banner">
-            <AlertCircle size={20} />
-            <span>Payment is still being processed. Your order will be confirmed once payment is complete.</span>
-          </div>
-        )}
-
-        <div className="tracking-content">
-          <div className="tracking-main">
-            {/* Current Status Card */}
-            <div className="current-status-card">
-              <div className="status-header">
-                <h2>Current Status</h2>
-                <div className={`status-badge ${order.status}`}>
-                  {order.status === 'cooking' && <ChefHat size={16} />}
-                  {order.status === 'ready' && <Bell size={16} />}
-                  {order.status === 'confirmed' && <CheckCircle size={16} />}
-                  {order.status === 'pending' && <Clock size={16} />}
-                  {order.status === 'pending_payment' && <Clock size={16} />}
-                  {order.status === 'completed' && <CheckCircle size={16} />}
-                  {order.status === 'pending_payment' ? 'Awaiting Payment' : 
-                   order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                </div>
-              </div>
-
-              {order.status === 'cooking' && order.time_remaining > 0 && (
-                <div className="cooking-progress">
-                  <div className="progress-info">
-                    <span className="time-remaining">{order.time_remaining} minutes remaining</span>
-                    <span className="estimated-ready">
-                      Ready by {estimatedReady ? formatTime(estimatedReady) : 'Soon!'}
-                    </span>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill"
-                      style={{ 
-                        width: `${((order.estimated_time - order.time_remaining) / order.estimated_time) * 100}%` 
-                      }}
-                    ></div>
-                  </div>
-                  <div className="cooking-animation">
-                    <span className="cooking-emoji">👨‍🍳</span>
-                    <span className="cooking-text">Our chef is preparing your order...</span>
-                  </div>
-                </div>
-              )}
-
-              {order.status === 'ready' && (
-                <div className="ready-notification">
-                  <div className="ready-icon">🔔</div>
-                  <h3>Your order is ready!</h3>
-                  <p>Please come to the pickup location to collect your delicious meal.</p>
-                </div>
-              )}
-
-              {order.status === 'completed' && (
-                <div className="completed-notification">
-                  <div className="completed-icon">✅</div>
-                  <h3>Order Complete!</h3>
-                  <p>Thank you for choosing Fernando's! We hope you enjoyed your meal.</p>
-                </div>
-              )}
+        {/* Main Status Card */}
+        <div className="status-card">
+          <div className="status-header">
+            <div className="status-icon">
+              {getStatusIcon(order.status)}
             </div>
-
-            {/* Progress Steps */}
-            <div className="progress-steps">
-              <h3>Order Progress</h3>
-              <div className="steps-container">
-                {steps.map((step, index) => (
-                  <div key={step.id} className={`step ${getStepStatus(step.id)}`}>
-                    <div className="step-connector">
-                      {index < steps.length - 1 && (
-                        <div className={`connector-line ${currentStep > step.id ? 'completed' : ''}`}></div>
-                      )}
-                    </div>
-                    <div className="step-content">
-                      <div className="step-icon">
-                        {step.icon}
-                      </div>
-                      <div className="step-details">
-                        <h4>{step.title}</h4>
-                        <p>{step.description}</p>
-                        {step.time && (
-                          <span className="step-time">{step.time}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="status-content">
+              <h2 className="status-title">{getStatusLabel(order.status)}</h2>
+              <p className="status-subtitle">
+                {order.status === 'cooking' && 'Our chefs are preparing your delicious meal'}
+                {order.status === 'confirmed' && 'Your order has been confirmed and will be prepared soon'}
+                {order.status === 'ready' && 'Your order is ready for pickup!'}
+                {order.status === 'completed' && 'Thank you for your order!'}
+                {order.status === 'pending_payment' && 'Please complete your payment to proceed'}
+              </p>
             </div>
           </div>
 
-          {/* Order Details Sidebar */}
-          <div className="tracking-sidebar">
-            <div className="order-details-card">
-              <h3>Order Details</h3>
-              <div className="order-items">
-                {order.items.map((item, index) => (
-                  <div key={index} className="order-item">
-                    <div className="item-info">
-                      <span className="item-emoji">{item.emoji || '🍽️'}</span>
-                      <div className="item-details">
-                        <span className="item-name">{item.name}</span>
-                        <span className="item-quantity">Qty: {item.quantity}</span>
-                      </div>
-                    </div>
-                    <span className="item-price">${(item.quantity * item.price).toFixed(2)}</span>
-                  </div>
-                ))}
+          {/* Live Timer and Progress for Active Orders */}
+          {(order.status === 'cooking' || order.status === 'confirmed') && (
+            <div className="progress-section">
+              <div className="timer-display">
+                <div className="countdown-timer">
+                  <span className="timer-value">{getEstimatedTimeRemaining(order)}</span>
+                  <span className="timer-label">estimated remaining</span>
+                </div>
+                <div className="progress-details">
+                  <span className="progress-percentage">{getProgressPercentage(order)}% complete</span>
+                </div>
               </div>
               
-              <div className="order-summary">
-                <div className="summary-line">
-                  <span>Subtotal:</span>
-                  <span>${order.subtotal.toFixed(2)}</span>
-                </div>
-                <div className="summary-line">
-                  <span>Tax:</span>
-                  <span>${order.tax.toFixed(2)}</span>
-                </div>
-                <div className="summary-line total">
-                  <span>Total:</span>
-                  <span>${order.total.toFixed(2)}</span>
+              <div className="progress-bar-container">
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill"
+                    style={{ width: `${getProgressPercentage(order)}%` }}
+                  ></div>
                 </div>
               </div>
             </div>
+          )}
+        </div>
 
-            <div className="pickup-info-card">
-              <h3>Pickup Information</h3>
-              <div className="pickup-details">
-                <div className="pickup-location">
-                  <MapPin size={20} />
-                  <div>
-                    <strong>Fernando's Food Truck</strong>
-                    <p>Campus Town - Green & Wright</p>
-                  </div>
+        {/* Order Summary */}
+        <div className="order-summary-card">
+          <h3>Order Summary</h3>
+          <div className="order-items">
+            {(typeof order.items === 'string' ? JSON.parse(order.items) : order.items).map((item, index) => (
+              <div key={index} className="order-item">
+                <div className="item-details">
+                  <span className="item-name">{item.name}</span>
+                  <span className="item-quantity">Qty: {item.quantity || 1}</span>
                 </div>
-                <div className="pickup-contact">
-                  <Phone size={20} />
-                  <div>
-                    <strong>Contact</strong>
-                    <p>(217) 255-0210</p>
-                  </div>
-                </div>
+                <span className="item-price">{formatPrice(item.price)}</span>
               </div>
-              
-              {order.status === 'ready' && (
-                <div className="pickup-reminder">
-                  <Bell size={16} />
-                  <span>Please pickup within 15 minutes to ensure food quality</span>
-                </div>
-              )}
+            ))}
+          </div>
+          <div className="order-total">
+            <div className="total-row">
+              <span className="total-label">Total</span>
+              <span className="total-amount">{formatPrice(order.total)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Pickup Information */}
+        <div className="pickup-info-card">
+          <div className="pickup-header">
+            <MapPin size={20} />
+            <h3>Pickup Location</h3>
+          </div>
+          <div className="pickup-details">
+            <p className="location-name">Fernando's Food Truck</p>
+            <p className="location-address">Check our social media for current location</p>
+            <p className="pickup-instructions">
+              Please have your order number ready when you arrive
+            </p>
+          </div>
+        </div>
+
+        {/* Customer Info */}
+        <div className="customer-info-card">
+          <h3>Order Details</h3>
+          <div className="customer-details">
+            <div className="detail-row">
+              <span className="detail-label">Customer:</span>
+              <span className="detail-value">{order.customer_name}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Phone:</span>
+              <span className="detail-value">{order.customer_phone}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Order Time:</span>
+              <span className="detail-value">{formatTime(order.orderTime || order.order_time)}</span>
             </div>
           </div>
         </div>
@@ -362,4 +329,4 @@ const OrderTrackingPage = () => {
   )
 }
 
-export default OrderTrackingPage 
+export default OrderTrackingPage

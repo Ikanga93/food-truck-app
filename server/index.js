@@ -13,6 +13,22 @@ import jwt from 'jsonwebtoken'
 import multer from 'multer'
 import fs from 'fs'
 
+// Set timezone to Central Time
+process.env.TZ = 'America/Chicago'
+
+// Helper function to get current Central Time
+const getCentralTime = () => {
+  return new Date().toLocaleString("en-US", {timeZone: "America/Chicago"})
+}
+
+// Helper function to format date for SQLite in Central Time
+const formatDateForDB = (date = new Date()) => {
+  return new Date(date.toLocaleString("en-US", {timeZone: "America/Chicago"}))
+    .toISOString()
+    .slice(0, 19)
+    .replace('T', ' ')
+}
+
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
@@ -343,8 +359,8 @@ app.post('/api/orders', async (req, res) => {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `http://localhost:5173/order-tracking?order_id=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `http://localhost:5173/?cancelled=true`,
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/order-tracking/${orderId}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/?cancelled=true`,
       customer_email: customerEmail,
       metadata: {
         orderId: orderId,
@@ -359,8 +375,8 @@ app.post('/api/orders', async (req, res) => {
       `INSERT INTO orders (
         id, customer_name, customer_phone, customer_email, items, 
         subtotal, tax, total, location_id, estimated_time, time_remaining,
-        stripe_session_id, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        stripe_session_id, status, order_time
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         orderId,
         customerName,
@@ -374,7 +390,8 @@ app.post('/api/orders', async (req, res) => {
         estimatedTime,
         estimatedTime,
         session.id,
-        'pending_payment'
+        'pending_payment',
+        formatDateForDB()
       ],
       function(err) {
         if (err) {

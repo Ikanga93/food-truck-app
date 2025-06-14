@@ -70,7 +70,7 @@ class ApiService {
 
   static async updateOrderStatus(orderId, status) {
     const response = await fetch(`${this.BASE_URL}/orders/${orderId}/status`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify({ status })
     })
