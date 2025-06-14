@@ -1,70 +1,196 @@
-import React, { useState } from 'react'
-import { Menu, X, ShoppingCart } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useBusinessConfig } from '../context/BusinessContext'
+import { Menu, X, ShoppingCart, User, ChevronDown, LogOut } from 'lucide-react'
 import { useCart } from '../context/CartContext'
+import { useCustomerAuth } from '../contexts/CustomerAuthContext'
 import Logo from './Logo'
 import './Header.css'
 
 const Header = ({ onCartOpen }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const { cartItems } = useCart()
+  const { user, logout } = useCustomerAuth()
   const location = useLocation()
-  const { config } = useBusinessConfig()
-  const { getCartItemCount } = useCart()
+
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
   }
 
-  const scrollToSection = (sectionId) => {
-    if (location.pathname !== '/') {
-      // If not on home page, navigate to home first
-      window.location.href = `/#${sectionId}`
-      return
+  const handleLogout = async () => {
+    try {
+      await logout()
+      setIsUserMenuOpen(false)
+    } catch (error) {
+      console.error('Logout error:', error)
     }
-    
-    const element = document.getElementById(sectionId)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
-    }
-    setIsMenuOpen(false)
   }
 
-  const totalItems = getCartItemCount()
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.user-menu-trigger') && !event.target.closest('.user-dropdown')) {
+        setIsUserMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
 
   return (
     <header className="header">
       <div className="container">
         <div className="header-content">
           <Link to="/" className="logo">
+            <Logo size={50} className="logo-image" />
             <div className="logo-text">
-              <h1>{config.businessName}</h1>
-              <span>{config.tagline}</span>
+              <h1>Fernando's</h1>
+              <span>Auténtica Comida Mexicana</span>
             </div>
-            {config.logo.showInHeader && <Logo size={50} className="logo-image" />}
           </Link>
           
+          <button 
+            className="menu-toggle"
+            onClick={toggleMenu}
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+
           <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
-            <Link to="/" onClick={() => setIsMenuOpen(false)}>Home</Link>
-            <Link to="/menu" onClick={() => setIsMenuOpen(false)}>Place Order</Link>
-            <Link to="/about" onClick={() => setIsMenuOpen(false)}>About</Link>
-            {config.features.catering && (
-              <Link to="/catering" onClick={() => setIsMenuOpen(false)}>Events</Link>
-            )}
-            <Link to="/location" onClick={() => setIsMenuOpen(false)}>Find Us</Link>
-            <a href="#contact" onClick={() => scrollToSection('contact')}>Contact</a>
+            <Link 
+              to="/" 
+              className={location.pathname === '/' ? 'nav-link active' : 'nav-link'}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Home
+            </Link>
+            <Link 
+              to="/menu" 
+              className={location.pathname === '/menu' ? 'nav-link active' : 'nav-link'}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Menu
+            </Link>
+            <Link 
+              to="/about" 
+              className={location.pathname === '/about' ? 'nav-link active' : 'nav-link'}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              About
+            </Link>
+            <Link 
+              to="/catering" 
+              className={location.pathname === '/catering' ? 'nav-link active' : 'nav-link'}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Catering
+            </Link>
+            <Link 
+              to="/location" 
+              className={location.pathname === '/location' ? 'nav-link active' : 'nav-link'}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Find Us
+            </Link>
+
+            {/* Mobile Authentication */}
+            <div className="mobile-auth">
+              {user ? (
+                <div className="mobile-user-menu">
+                  <div className="mobile-user-info">
+                    <User className="h-5 w-5" />
+                    <span>{user.firstName || user.email}</span>
+                  </div>
+                  <Link
+                    to="/orders"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="mobile-menu-item"
+                  >
+                    My Orders
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="mobile-menu-item mobile-logout"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <div className="mobile-auth-buttons">
+                  <Link
+                    to="/login"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="mobile-login-btn"
+                  >
+                    Log in
+                  </Link>
+                </div>
+              )}
+            </div>
           </nav>
 
           <div className="header-actions">
-            {config.features.onlineOrdering && (
-            <button className="cart-btn" onClick={onCartOpen}>
+            {/* Desktop Authentication */}
+            <div className="desktop-auth">
+              {user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="user-menu-trigger"
+                  >
+                    <User className="h-5 w-5" />
+                    <span className="user-name">
+                      {user.firstName || user.email}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+
+                  {isUserMenuOpen && (
+                    <div className="user-dropdown">
+                      <Link
+                        to="/orders"
+                        className="dropdown-item"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        My Orders
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false)
+                          handleLogout()
+                        }}
+                        className="dropdown-item dropdown-logout"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="desktop-auth-buttons">
+                  <Link to="/login" className="login-btn">
+                    <span className="login-text">Log in</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Cart Button */}
+            <button 
+              className="cart-btn"
+              onClick={onCartOpen}
+              aria-label="Open cart"
+            >
               <ShoppingCart size={20} />
-              {totalItems > 0 && <span className="cart-count">{totalItems}</span>}
-            </button>
-            )}
-            
-            <button className="menu-toggle" onClick={toggleMenu}>
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {totalItems > 0 && (
+                <span className="cart-count">{totalItems}</span>
+              )}
             </button>
           </div>
         </div>

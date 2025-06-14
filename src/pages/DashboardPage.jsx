@@ -64,7 +64,9 @@ const DashboardPage = ({ onLogout }) => {
     price: '',
     category: '',
     emoji: '',
-    available: true
+    available: true,
+    image_url: '',
+    imageFile: null
   })
 
   const [locationForm, setLocationForm] = useState({
@@ -80,26 +82,49 @@ const DashboardPage = ({ onLogout }) => {
 
   // Initialize Socket.IO and load data
   useEffect(() => {
-    // Connect to Socket.IO for real-time updates
-    const newSocket = io(API_BASE_URL)
-    setSocket(newSocket)
+    const initializeDashboard = async () => {
+      try {
+        setIsLoading(true)
+        
+        // Load initial data in parallel
+        await Promise.all([
+          loadOrders(),
+          loadMenuItems(),
+          loadLocations()
+        ])
 
-    // Load initial data
-    loadOrders()
-    loadMenuItems()
-    loadLocations()
+        // Try to connect to Socket.IO for real-time updates (optional)
+        try {
+          const newSocket = io(API_BASE_URL)
+          setSocket(newSocket)
 
-    // Listen for real-time order updates
-    newSocket.on('orderUpdate', (updatedOrder) => {
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === updatedOrder.id ? updatedOrder : order
-        )
-      )
-    })
+          // Listen for real-time order updates
+          newSocket.on('orderUpdate', (updatedOrder) => {
+            setOrders(prevOrders =>
+              prevOrders.map(order =>
+                order.id === updatedOrder.id ? updatedOrder : order
+              )
+            )
+          })
+        } catch (socketError) {
+          console.warn('Socket.IO connection failed, continuing without real-time updates:', socketError)
+        }
+
+        setError(null)
+      } catch (error) {
+        console.error('Error initializing dashboard:', error)
+        setError('Failed to load dashboard data. Please refresh the page.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    initializeDashboard()
 
     return () => {
-      newSocket.close()
+      if (socket) {
+        socket.close()
+      }
     }
   }, [])
 
@@ -111,6 +136,7 @@ const DashboardPage = ({ onLogout }) => {
       setOrders(ordersData)
     } catch (error) {
       console.error('Error loading orders:', error)
+      throw error // Re-throw to be caught by the main error handler
     } finally {
       setIsLoadingOrders(false)
     }
@@ -118,10 +144,14 @@ const DashboardPage = ({ onLogout }) => {
 
   const loadMenuItems = async () => {
     try {
+      setIsLoadingMenu(true)
       const menuData = await ApiService.getMenuItems()
       setMenuItems(menuData)
     } catch (error) {
       console.error('Error loading menu items:', error)
+      throw error // Re-throw to be caught by the main error handler
+    } finally {
+      setIsLoadingMenu(false)
     }
   }
 
@@ -132,6 +162,7 @@ const DashboardPage = ({ onLogout }) => {
       setLocations(locationsData)
     } catch (error) {
       console.error('Error loading locations:', error)
+      throw error // Re-throw to be caught by the main error handler
     } finally {
       setIsLoadingLocations(false)
     }
@@ -210,7 +241,9 @@ const DashboardPage = ({ onLogout }) => {
       price: '',
       category: '',
       emoji: '',
-      available: true
+      available: true,
+      image_url: '',
+      imageFile: null
     })
     setShowMenuModal(true)
   }
@@ -219,11 +252,13 @@ const DashboardPage = ({ onLogout }) => {
     setEditingMenuItem(item)
     setMenuForm({
       name: item.name,
-      description: item.description || '',
-      price: item.price.toString(),
+      description: item.description,
+      price: item.price,
       category: item.category,
-      emoji: item.emoji || '',
-      available: item.available
+      emoji: item.emoji,
+      available: item.available,
+      image_url: item.image_url || '',
+      imageFile: null
     })
     setShowMenuModal(true)
   }
@@ -234,45 +269,70 @@ const DashboardPage = ({ onLogout }) => {
   }
 
   const handleMenuFormChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setMenuForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }))
+    const { name, value, type, checked, files } = e.target
+    if (name === 'imageFile') {
+      setMenuForm(prev => ({ ...prev, imageFile: files[0] }))
+    } else {
+      setMenuForm(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }))
+    }
+  }
+
+  const uploadImage = async (imageFile) => {
+    const formData = new FormData()
+    formData.append('image', imageFile)
+    
+    const response = await fetch(`${API_BASE_URL}/api/upload-menu-image`, {
+      method: 'POST',
+      body: formData
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to upload image')
+    }
+    
+    const data = await response.json()
+    return data.imageUrl
   }
 
   const handleMenuSubmit = async (e) => {
     e.preventDefault()
     
-    if (!menuForm.name.trim() || !menuForm.price || !menuForm.category.trim()) {
+    if (!menuForm.name || !menuForm.price || !menuForm.category) {
       alert('Please fill in all required fields')
       return
     }
 
     try {
+      let imageUrl = menuForm.image_url
+
+      // Upload new image if selected
+      if (menuForm.imageFile) {
+        imageUrl = await uploadImage(menuForm.imageFile)
+      }
+
       const menuData = {
-        name: menuForm.name.trim(),
-        description: menuForm.description.trim(),
+        name: menuForm.name,
+        description: menuForm.description,
         price: parseFloat(menuForm.price),
-        category: menuForm.category.trim(),
-        emoji: menuForm.emoji.trim(),
-        available: menuForm.available
+        category: menuForm.category,
+        emoji: menuForm.emoji,
+        available: menuForm.available,
+        image_url: imageUrl
       }
 
       if (editingMenuItem) {
         // Update existing item
         await ApiService.updateMenuItem(editingMenuItem.id, menuData)
-        setMenuItems(prevItems =>
-          prevItems.map(item =>
-            item.id === editingMenuItem.id ? { ...item, ...menuData } : item
-          )
-        )
       } else {
         // Add new item
-        const newItem = await ApiService.addMenuItem(menuData)
-        setMenuItems(prevItems => [...prevItems, newItem])
+        await ApiService.addMenuItem(menuData)
       }
 
+      // Refresh menu items
+      await loadMenuItems()
       closeMenuModal()
     } catch (error) {
       console.error('Error saving menu item:', error)
@@ -782,6 +842,55 @@ const DashboardPage = ({ onLogout }) => {
     }
   }
 
+  // Show loading screen while initializing
+  if (isLoading) {
+    return (
+      <div className="dashboard-page">
+        <DashboardHeader 
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onLogout={onLogout}
+        />
+        <div className="dashboard-main">
+          <div className="dashboard-content">
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p>Loading dashboard...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error screen if initialization failed
+  if (error) {
+    return (
+      <div className="dashboard-page">
+        <DashboardHeader 
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onLogout={onLogout}
+        />
+        <div className="dashboard-main">
+          <div className="dashboard-content">
+            <div className="error-container">
+              <div className="error-icon">⚠️</div>
+              <h3>Dashboard Error</h3>
+              <p>{error}</p>
+              <button 
+                className="btn-primary" 
+                onClick={() => window.location.reload()}
+              >
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="dashboard-page">
       <DashboardHeader 
@@ -828,6 +937,28 @@ const DashboardPage = ({ onLogout }) => {
                       maxLength="2"
                     />
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Item Image</label>
+                  <input
+                    type="file"
+                    name="imageFile"
+                    onChange={handleMenuFormChange}
+                    accept="image/*"
+                    className="file-input"
+                  />
+                  {menuForm.image_url && (
+                    <div className="current-image">
+                      <p>Current image:</p>
+                      <img 
+                        src={`${API_BASE_URL}${menuForm.image_url}`} 
+                        alt="Current menu item" 
+                        className="preview-image"
+                      />
+                    </div>
+                  )}
+                  <small className="form-help">Upload an image to display instead of emoji (JPG, PNG, max 5MB)</small>
                 </div>
 
                 <div className="form-group">

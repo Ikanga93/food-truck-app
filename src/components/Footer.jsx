@@ -45,7 +45,7 @@ const Footer = () => {
         
         <div className="footer-bottom">
           <p>&copy; 2025 Fernando's Food Truck. Made with ❤️ and lots of spice!</p>
-          <Link to="/admin-login" className="admin-access">Staff</Link>
+          <Link to="/admin/login" className="admin-access">Staff</Link>
         </div>
       </div>
     </footer>

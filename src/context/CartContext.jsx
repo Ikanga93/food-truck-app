@@ -12,59 +12,137 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([])
+  const [isLoaded, setIsLoaded] = useState(false)
 
   // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('cart')
+    console.log('Loading cart from localStorage:', savedCart)
     if (savedCart) {
       try {
-        setCartItems(JSON.parse(savedCart))
+        const parsedCart = JSON.parse(savedCart)
+        console.log('Parsed cart:', parsedCart)
+        setCartItems(parsedCart)
       } catch (error) {
         console.error('Error loading cart from localStorage:', error)
       }
     }
+    setIsLoaded(true)
   }, [])
 
-  // Save cart to localStorage whenever it changes
+  // Save cart to localStorage whenever it changes (but only after initial load)
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cartItems))
-  }, [cartItems])
+    if (isLoaded) {
+      console.log('Saving cart to localStorage:', cartItems)
+      localStorage.setItem('cart', JSON.stringify(cartItems))
+    }
+  }, [cartItems, isLoaded])
 
   const addToCart = (item) => {
     setCartItems(prevItems => {
-      const existingItem = prevItems.find(cartItem => cartItem.id === item.id)
+      // For items with options, we need to check if the same item with the same options exists
+      const hasOptions = item.selectedOptions && Object.keys(item.selectedOptions).length > 0;
       
-      if (existingItem) {
-        // If item already exists, increase quantity
-        return prevItems.map(cartItem =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem
-        )
+      if (hasOptions) {
+        // Create a unique key for this item + options combination
+        const itemOptionsKey = generateItemOptionsKey(item);
+        
+        // Check if this exact item + options combination exists
+        const existingItemIndex = prevItems.findIndex(cartItem => 
+          generateItemOptionsKey(cartItem) === itemOptionsKey
+        );
+        
+        if (existingItemIndex >= 0) {
+          // If the exact item + options combination exists, increase quantity
+          const updatedItems = [...prevItems];
+          updatedItems[existingItemIndex] = {
+            ...updatedItems[existingItemIndex],
+            quantity: updatedItems[existingItemIndex].quantity + 1
+          };
+          return updatedItems;
+        } else {
+          // If new item + options combination, add with quantity 1
+          return [...prevItems, { ...item, quantity: 1 }];
+        }
       } else {
-        // If new item, add with quantity 1
-        return [...prevItems, { ...item, quantity: 1 }]
+        // For items without options, use the original logic
+        const existingItem = prevItems.find(cartItem => cartItem.id === item.id && !cartItem.selectedOptions);
+        
+        if (existingItem) {
+          // If item already exists, increase quantity
+          return prevItems.map(cartItem =>
+            cartItem.id === item.id && !cartItem.selectedOptions
+              ? { ...cartItem, quantity: cartItem.quantity + 1 }
+              : cartItem
+          );
+        } else {
+          // If new item, add with quantity 1
+          return [...prevItems, { ...item, quantity: 1 }];
+        }
       }
-    })
+    });
+  }
+  
+  // Generate a unique key for an item + options combination
+  const generateItemOptionsKey = (item) => {
+    if (!item.selectedOptions) return `${item.id}`;
+    
+    // Create a string representation of the selected options
+    const optionsString = Object.entries(item.selectedOptions)
+      .map(([groupId, selection]) => {
+        if (Array.isArray(selection)) {
+          // For multi-select options, sort the array to ensure consistent keys
+          return `${groupId}:${[...selection].sort().join(',')}`;
+        }
+        return `${groupId}:${selection}`;
+      })
+      .sort() // Sort to ensure consistent order
+      .join('|');
+    
+    return `${item.id}|${optionsString}`;
   }
 
-  const removeFromCart = (itemId) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== itemId))
+  const removeFromCart = (itemId, selectedOptions = null) => {
+    setCartItems(prevItems => {
+      if (selectedOptions && Object.keys(selectedOptions).length > 0) {
+        // For items with options, we need to match both id and options
+        const itemOptionsKey = generateItemOptionsKey({ id: itemId, selectedOptions });
+        return prevItems.filter(item => generateItemOptionsKey(item) !== itemOptionsKey);
+      } else {
+        // For items without options, use the original logic
+        return prevItems.filter(item => {
+          if (item.id !== itemId) return true;
+          // If this item has options, keep it (it's not the one we're removing)
+          return item.selectedOptions && Object.keys(item.selectedOptions).length > 0;
+        });
+      }
+    });
   }
 
-  const updateQuantity = (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromCart(itemId)
+  const updateQuantity = (itemId, newQuantity, selectedOptions = null) => {
+    if (newQuantity < 1) {
+      removeFromCart(itemId, selectedOptions)
       return
     }
-
-    setCartItems(prevItems =>
-      prevItems.map(item =>
-        item.id === itemId
-          ? { ...item, quantity: newQuantity }
-          : item
-      )
-    )
+    
+    setCartItems(prevItems => {
+      if (selectedOptions && Object.keys(selectedOptions).length > 0) {
+        // For items with options, we need to match both id and options
+        const itemOptionsKey = generateItemOptionsKey({ id: itemId, selectedOptions });
+        
+        return prevItems.map(item => {
+          const currentItemKey = generateItemOptionsKey(item);
+          return currentItemKey === itemOptionsKey ? { ...item, quantity: newQuantity } : item;
+        });
+      } else {
+        // For items without options, use the original logic
+        return prevItems.map(item => {
+          if (item.id !== itemId) return item;
+          if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) return item;
+          return { ...item, quantity: newQuantity };
+        });
+      }
+    });
   }
 
   const clearCart = () => {
@@ -96,4 +174,4 @@ export const CartProvider = ({ children }) => {
   )
 }
 
-export default CartContext 
+export default CartContext

@@ -1,23 +1,20 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
 import { useCustomerAuth } from '../contexts/CustomerAuthContext'
-import { User, Mail, Phone, Lock, AlertCircle } from 'lucide-react'
+import { UserPlus, Mail, Phone, Lock, User, AlertCircle } from 'lucide-react'
 import '../styles/auth.css'
 
-const LoginPage = () => {
+const RegisterPage = () => {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const { login, error: authError } = useCustomerAuth()
+  const { register, error: authError } = useCustomerAuth()
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
-    password: ''
+    password: '',
+    fullName: ''
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  // Get redirect parameter from URL
-  const redirectTo = searchParams.get('redirect')
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -33,20 +30,29 @@ const LoginPage = () => {
     setLoading(true)
 
     try {
+      // Split full name into first and last name for backend compatibility
+      const nameParts = formData.fullName.trim().split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      // Prepare registration data
+      const registrationData = {
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        firstName,
+        lastName,
+        role: 'customer' // Always customer for this registration page
+      }
+
       // Remove empty fields
-      const credentials = Object.fromEntries(
-        Object.entries(formData).filter(([_, value]) => value.trim() !== '')
+      const cleanData = Object.fromEntries(
+        Object.entries(registrationData).filter(([_, value]) => value.trim() !== '')
       )
 
-      await login(credentials)
-      
-      // Redirect based on the redirect parameter or default to menu
-      if (redirectTo === 'checkout') {
-        // Redirect back to menu with checkout state preserved
-        navigate('/menu', { state: { openCheckout: true } })
-      } else {
-        navigate('/menu')
-      }
+      await register(cleanData)
+      // Always redirect customers to menu
+      navigate('/menu')
     } catch (error) {
       setError(error.message)
     } finally {
@@ -54,30 +60,39 @@ const LoginPage = () => {
     }
   }
 
-  const handleContinueAsGuest = () => {
-    if (redirectTo === 'checkout') {
-      // Redirect back to menu with checkout state preserved
-      navigate('/menu', { state: { openCheckout: true } })
-    } else {
-      navigate('/menu')
-    }
-  }
-
   return (
     <div className="auth-container">
       <div className="auth-header">
         <div className="auth-logo">
-          <User />
+          <UserPlus />
         </div>
-        <h1 className="auth-title">Welcome back!</h1>
+        <h1 className="auth-title">Join Fernando's Family!</h1>
         <p className="auth-subtitle">
-          Sign in to your account for faster ordering and exclusive deals
+          Create your account for faster ordering and exclusive deals
         </p>
       </div>
 
       <div className="auth-form-container">
         <div className="auth-form-card">
           <form className="auth-form" onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="fullName" className="form-label">
+                <User size={16} />
+                Full name <span className="required">*</span>
+              </label>
+              <input
+                id="fullName"
+                name="fullName"
+                type="text"
+                autoComplete="name"
+                required
+                value={formData.fullName}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your full name"
+              />
+            </div>
+
             <div className="form-group">
               <label htmlFor="email" className="form-label">
                 <Mail size={16} />
@@ -98,7 +113,7 @@ const LoginPage = () => {
             <div className="form-group">
               <label htmlFor="phone" className="form-label">
                 <Phone size={16} />
-                Phone number (alternative)
+                Phone number
               </label>
               <input
                 id="phone"
@@ -121,12 +136,12 @@ const LoginPage = () => {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
                 value={formData.password}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="Enter your password"
+                placeholder="Create a secure password"
               />
             </div>
 
@@ -145,34 +160,26 @@ const LoginPage = () => {
               {loading ? (
                 <>
                   <div className="loading-spinner"></div>
-                  Signing in...
+                  Creating account...
                 </>
               ) : (
                 <>
-                  <User size={18} />
-                  Sign in
+                  <UserPlus size={18} />
+                  Create Account
                 </>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleContinueAsGuest}
-              className="auth-button auth-button-secondary"
-            >
-              Continue as Guest
             </button>
           </form>
 
           <div className="auth-footer">
             <p>
-              Don't have an account?{' '}
-              <Link to="/register" className="auth-link">
-                Sign up here
+              Already have an account?{' '}
+              <Link to="/login" className="auth-link">
+                Sign in here
               </Link>
             </p>
             <p className="auth-note">
-              * Either email or phone number is required to sign in
+              * Required fields. Either email or phone number must be provided.
             </p>
           </div>
         </div>
@@ -181,4 +188,4 @@ const LoginPage = () => {
   )
 }
 
-export default LoginPage
+export default RegisterPage
