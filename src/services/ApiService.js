@@ -41,13 +41,27 @@ class ApiService {
     }
   }
 
+  // Helper method to safely parse JSON response
+  static async parseResponse(response) {
+    const text = await response.text()
+    if (!text) {
+      throw new Error('Empty response from server')
+    }
+    try {
+      return JSON.parse(text)
+    } catch (error) {
+      console.error('Failed to parse JSON response:', text)
+      throw new Error('Invalid JSON response from server')
+    }
+  }
+
   // Orders
   static async getOrders() {
     const response = await fetch(`${this.BASE_URL}/orders`, {
       headers: this.getAdminAuthHeaders()
     })
     if (!response.ok) throw new Error('Failed to fetch orders')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async getCustomerOrders(customerId) {
@@ -55,7 +69,7 @@ class ApiService {
       headers: this.getAuthHeaders()
     })
     if (!response.ok) throw new Error('Failed to fetch customer orders')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async createOrder(orderData) {
@@ -65,17 +79,17 @@ class ApiService {
       body: JSON.stringify(orderData)
     })
     if (!response.ok) throw new Error('Failed to create order')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async updateOrderStatus(orderId, status) {
     const response = await fetch(`${this.BASE_URL}/orders/${orderId}/status`, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify({ status })
     })
     if (!response.ok) throw new Error('Failed to update order status')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async getOrder(orderId) {
@@ -83,14 +97,14 @@ class ApiService {
       headers: this.getAuthHeaders()
     })
     if (!response.ok) throw new Error('Failed to fetch order')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   // Menu items
   static async getMenuItems() {
     const response = await fetch(`${this.BASE_URL}/menu`)
     if (!response.ok) throw new Error('Failed to fetch menu items')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async addMenuItem(menuData) {
@@ -100,7 +114,7 @@ class ApiService {
       body: JSON.stringify(menuData)
     })
     if (!response.ok) throw new Error('Failed to add menu item')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async updateMenuItem(itemId, updates) {
@@ -110,7 +124,7 @@ class ApiService {
       body: JSON.stringify(updates)
     })
     if (!response.ok) throw new Error('Failed to update menu item')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async deleteMenuItem(itemId) {
@@ -119,14 +133,14 @@ class ApiService {
       headers: this.getAdminAuthHeaders()
     })
     if (!response.ok) throw new Error('Failed to delete menu item')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   // Locations
   static async getLocations() {
     const response = await fetch(`${this.BASE_URL}/locations`)
     if (!response.ok) throw new Error('Failed to fetch locations')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async addLocation(locationData) {
@@ -136,7 +150,7 @@ class ApiService {
       body: JSON.stringify(locationData)
     })
     if (!response.ok) throw new Error('Failed to add location')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async updateLocation(locationId, updates) {
@@ -146,7 +160,7 @@ class ApiService {
       body: JSON.stringify(updates)
     })
     if (!response.ok) throw new Error('Failed to update location')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   static async deleteLocation(locationId) {
@@ -155,7 +169,7 @@ class ApiService {
       headers: this.getAdminAuthHeaders()
     })
     if (!response.ok) throw new Error('Failed to delete location')
-    return response.json()
+    return this.parseResponse(response)
   }
 
   // Stripe payment
@@ -166,7 +180,7 @@ class ApiService {
       body: JSON.stringify(orderData)
     })
     if (!response.ok) throw new Error('Failed to create payment intent')
-    return response.json()
+    return this.parseResponse(response)
   }
 }
 
