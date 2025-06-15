@@ -271,6 +271,47 @@ const initializePostgreSQLTables = async () => {
     notes TEXT,
     FOREIGN KEY (user_id) REFERENCES users (id)
   )`)
+
+  // Auth tokens table
+  await query(`CREATE TABLE IF NOT EXISTS auth_tokens (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    token TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`)
+
+  // Customer profiles table
+  await query(`CREATE TABLE IF NOT EXISTS customer_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL,
+    preferences JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`)
+
+  // Admin profiles table
+  await query(`CREATE TABLE IF NOT EXISTS admin_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) UNIQUE NOT NULL,
+    permissions JSONB,
+    last_login TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`)
+
+  // Order status history table
+  await query(`CREATE TABLE IF NOT EXISTS order_status_history (
+    id SERIAL PRIMARY KEY,
+    order_id VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders (id)
+  )`)
 }
 
 export default db

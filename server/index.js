@@ -731,7 +731,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Store refresh token
     await query(
-      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+7 days"))',
+      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, NOW() + INTERVAL \'7 days\')',
       [uuidv4(), userId, refreshToken, 'refresh']
     )
 
@@ -795,7 +795,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Store refresh token
     await query(
-      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+7 days"))',
+      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, NOW() + INTERVAL \'7 days\')',
       [uuidv4(), user.id, refreshToken, 'refresh']
     )
 
@@ -841,8 +841,8 @@ app.post('/api/auth/refresh', async (req, res) => {
 
     // Check if token exists in database
     const token = await queryOne(
-      'SELECT * FROM auth_tokens WHERE token = ? AND type = "refresh" AND expires_at > CURRENT_TIMESTAMP',
-      [refreshToken]
+      'SELECT * FROM auth_tokens WHERE token = ? AND type = ? AND expires_at > CURRENT_TIMESTAMP',
+      [refreshToken, 'refresh']
     )
 
     if (!token) {
