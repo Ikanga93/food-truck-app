@@ -558,13 +558,13 @@ const DashboardPage = ({ onLogout }) => {
                   {order.items.map((item, index) => (
                     <div key={index} className="order-item">
                       <span>{item.quantity}x {item.name}</span>
-                      <span>${(item.quantity * item.price).toFixed(2)}</span>
+                      <span>${((item.quantity || 0) * (parseFloat(item.price) || 0)).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
 
                 <div className="order-total">
-                  <strong>Total: ${order.total.toFixed(2)}</strong>
+                  <strong>Total: ${(parseFloat(order.total) || 0).toFixed(2)}</strong>
                 </div>
 
                 {order.status === 'cooking' && order.time_remaining > 0 && (
@@ -660,7 +660,7 @@ const DashboardPage = ({ onLogout }) => {
                 <div className="menu-item-info">
                   <h3>{item.name}</h3>
                   <p className="menu-category">{item.category}</p>
-                  <p className="menu-price">${item.price.toFixed(2)}</p>
+                  <p className="menu-price">${(parseFloat(item.price) || 0).toFixed(2)}</p>
                 </div>
               </div>
               
