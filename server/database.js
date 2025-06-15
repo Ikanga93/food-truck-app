@@ -312,6 +312,20 @@ const initializePostgreSQLTables = async () => {
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders (id)
   )`)
+
+  // Locations table
+  await query(`CREATE TABLE IF NOT EXISTS locations (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) DEFAULT 'mobile',
+    description TEXT,
+    current_location VARCHAR(255),
+    schedule TEXT,
+    phone VARCHAR(20),
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`)
 }
 
 export default db

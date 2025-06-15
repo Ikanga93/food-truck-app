@@ -486,195 +486,157 @@ app.delete('/api/menu/:id', async (req, res) => {
 // Locations API Routes
 
 // Get all locations
-app.get('/api/locations', (req, res) => {
-  query('SELECT * FROM locations ORDER BY name', [], (err, rows) => {
-    if (err) {
-      console.error('Error fetching locations:', err)
-      res.status(500).json({ error: 'Failed to fetch locations' })
-    } else {
-      res.json(rows)
-    }
-  })
+app.get('/api/locations', async (req, res) => {
+  try {
+    const rows = await queryAll('SELECT * FROM locations ORDER BY name')
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching locations:', error)
+    res.status(500).json({ error: 'Failed to fetch locations' })
+  }
 })
 
 // Add new location
-app.post('/api/locations', (req, res) => {
-  const { id, name, type, description, current_location, schedule, phone, status } = req.body
-  
-  if (!id || !name) {
-    return res.status(400).json({ error: 'ID and name are required' })
-  }
-
-  query(
-    'INSERT INTO locations (id, name, type, description, current_location, schedule, phone, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, name, type || 'mobile', description, current_location, schedule, phone, status || 'active'],
-    function(err) {
-      if (err) {
-        console.error('Error adding location:', err)
-        if (err.code === 'SQLITE_CONSTRAINT_PRIMARYKEY') {
-          res.status(400).json({ error: 'Location ID already exists' })
-        } else {
-          res.status(500).json({ error: 'Failed to add location' })
-        }
-      } else {
-        // Return the created item
-        query('SELECT * FROM locations WHERE id = ?', [this.lastID], (err, row) => {
-          if (err) {
-            res.status(500).json({ error: 'Failed to fetch created item' })
-          } else {
-            res.json(row)
-          }
-        })
-      }
+app.post('/api/locations', async (req, res) => {
+  try {
+    const { id, name, type, description, current_location, schedule, phone, status } = req.body
+    
+    if (!id || !name) {
+      return res.status(400).json({ error: 'ID and name are required' })
     }
-  )
+
+    await query(
+      'INSERT INTO locations (id, name, type, description, current_location, schedule, phone, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, name, type || 'mobile', description, current_location, schedule, phone, status || 'active']
+    )
+
+    // Return the created item
+    const createdLocation = await queryOne('SELECT * FROM locations WHERE id = ?', [id])
+    res.json(createdLocation)
+  } catch (error) {
+    console.error('Error adding location:', error)
+    if (error.code === 'SQLITE_CONSTRAINT_PRIMARYKEY' || error.code === '23505') {
+      res.status(400).json({ error: 'Location ID already exists' })
+    } else {
+      res.status(500).json({ error: 'Failed to add location' })
+    }
+  }
 })
 
 // Update location
-app.put('/api/locations/:id', (req, res) => {
-  const { id } = req.params
-  const { name, type, description, current_location, schedule, phone, status } = req.body
-  
-  query(
-    'UPDATE locations SET name = ?, type = ?, description = ?, current_location = ?, schedule = ?, phone = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, type, description, current_location, schedule, phone, status, id],
-    function(err) {
-      if (err) {
-        console.error('Error updating location:', err)
-        res.status(500).json({ error: 'Failed to update location' })
-      } else if (this.changes === 0) {
-        res.status(404).json({ error: 'Location not found' })
-      } else {
-        res.json({ success: true, changes: this.changes })
-      }
+app.put('/api/locations/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { name, type, description, current_location, schedule, phone, status } = req.body
+    
+    const result = await query(
+      'UPDATE locations SET name = ?, type = ?, description = ?, current_location = ?, schedule = ?, phone = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name, type, description, current_location, schedule, phone, status, id]
+    )
+
+    if (result.changes === 0) {
+      res.status(404).json({ error: 'Location not found' })
+    } else {
+      res.json({ success: true, changes: result.changes })
     }
-  )
+  } catch (error) {
+    console.error('Error updating location:', error)
+    res.status(500).json({ error: 'Failed to update location' })
+  }
 })
 
 // Delete location
-app.delete('/api/locations/:id', (req, res) => {
-  const { id } = req.params
-  
-  query('DELETE FROM locations WHERE id = ?', [id], function(err) {
-    if (err) {
-      console.error('Error deleting location:', err)
-      res.status(500).json({ error: 'Failed to delete location' })
-    } else if (this.changes === 0) {
+app.delete('/api/locations/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const result = await query('DELETE FROM locations WHERE id = ?', [id])
+    
+    if (result.changes === 0) {
       res.status(404).json({ error: 'Location not found' })
     } else {
-      res.json({ success: true, changes: this.changes })
+      res.json({ success: true, changes: result.changes })
     }
-  })
+  } catch (error) {
+    console.error('Error deleting location:', error)
+    res.status(500).json({ error: 'Failed to delete location' })
+  }
 })
 
 // Timer to update cooking orders
-setInterval(() => {
-  query(
-    'SELECT * FROM orders WHERE status = ? AND time_remaining > 0',
-    ['cooking'],
-    (err, rows) => {
-      if (err) return
+setInterval(async () => {
+  try {
+    const rows = await queryAll('SELECT * FROM orders WHERE status = ? AND time_remaining > 0', ['cooking'])
+    
+    for (const order of rows) {
+      const newTimeRemaining = Math.max(0, order.time_remaining - 1)
+      const newStatus = newTimeRemaining === 0 ? 'ready' : 'cooking'
 
-      rows.forEach(order => {
-        const newTimeRemaining = Math.max(0, order.time_remaining - 1)
-        const newStatus = newTimeRemaining === 0 ? 'ready' : 'cooking'
-
-        query(
-          'UPDATE orders SET time_remaining = ?, status = ? WHERE id = ?',
-          [newTimeRemaining, newStatus, order.id],
-          () => {
-            if (newStatus === 'ready') {
-              // Add status change to history
-              query(
-                'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
-                [order.id, 'ready']
-              )
-            }
-
-            // Get updated order and emit to clients
-            query('SELECT * FROM orders WHERE id = ?', [order.id], (err, updatedRow) => {
-              if (updatedRow) {
-                const updatedOrder = {
-                  ...updatedRow,
-                  items: JSON.parse(updatedRow.items),
-                  orderTime: new Date(updatedRow.order_time)
-                }
-
-                io.to('admin').emit('order-updated', updatedOrder)
-                io.to(`order-${order.id}`).emit('order-status-updated', updatedOrder)
-              }
-            })
-          }
+      await query(
+        'UPDATE orders SET time_remaining = ?, status = ? WHERE id = ?',
+        [newTimeRemaining, newStatus, order.id]
+      )
+      
+      if (newStatus === 'ready') {
+        // Add status change to history
+        await query(
+          'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
+          [order.id, 'ready']
         )
-      })
+      }
+
+      // Get updated order and emit to clients
+      const updatedRow = await queryOne('SELECT * FROM orders WHERE id = ?', [order.id])
+      if (updatedRow) {
+        const updatedOrder = {
+          ...updatedRow,
+          items: JSON.parse(updatedRow.items),
+          orderTime: new Date(updatedRow.order_date)
+        }
+
+        io.to('admin').emit('order-updated', updatedOrder)
+        io.to(`order-${order.id}`).emit('order-status-updated', updatedOrder)
+      }
     }
-  )
+  } catch (error) {
+    console.error('Timer error:', error)
+  }
 }, 60000) // Update every minute
 
 // Dashboard API Route
-app.get('/api/dashboard', (req, res) => {
-  // Get counts and statistics from database
-  query('SELECT COUNT(*) as total_orders FROM orders', [], (err, orderCount) => {
-    if (err) {
-      console.error('Error fetching order count:', err)
-      return res.status(500).json({ error: 'Failed to fetch dashboard data' })
+app.get('/api/dashboard', async (req, res) => {
+  try {
+    // Get counts and statistics from database
+    const orderCount = await queryOne('SELECT COUNT(*) as total_orders FROM orders')
+    const menuCount = await queryOne('SELECT COUNT(*) as total_menu_items FROM menu_items')
+    const locationCount = await queryOne('SELECT COUNT(*) as total_locations FROM locations')
+    
+    // Get recent orders
+    const recentOrders = await queryAll('SELECT * FROM orders ORDER BY order_date DESC LIMIT 5')
+    
+    // Get order status distribution
+    const statusDistribution = await queryAll('SELECT status, COUNT(*) as count FROM orders GROUP BY status')
+
+    // Format the response
+    const dashboardData = {
+      summary: {
+        totalOrders: orderCount.total_orders,
+        totalMenuItems: menuCount.total_menu_items,
+        totalLocations: locationCount.total_locations
+      },
+      recentOrders: recentOrders.map(order => ({
+        ...order,
+        items: JSON.parse(order.items),
+        orderTime: new Date(order.order_date)
+      })),
+      orderStatusDistribution: statusDistribution
     }
 
-    query('SELECT COUNT(*) as total_menu_items FROM menu_items', [], (err, menuCount) => {
-      if (err) {
-        console.error('Error fetching menu count:', err)
-        return res.status(500).json({ error: 'Failed to fetch dashboard data' })
-      }
-
-      query('SELECT COUNT(*) as total_locations FROM locations', [], (err, locationCount) => {
-        if (err) {
-          console.error('Error fetching location count:', err)
-          return res.status(500).json({ error: 'Failed to fetch dashboard data' })
-        }
-
-        // Get recent orders
-        query(
-          'SELECT * FROM orders ORDER BY order_time DESC LIMIT 5',
-          [],
-          (err, recentOrders) => {
-            if (err) {
-              console.error('Error fetching recent orders:', err)
-              return res.status(500).json({ error: 'Failed to fetch dashboard data' })
-            }
-
-            // Get order status distribution
-            query(
-              'SELECT status, COUNT(*) as count FROM orders GROUP BY status',
-              [],
-              (err, statusDistribution) => {
-                if (err) {
-                  console.error('Error fetching status distribution:', err)
-                  return res.status(500).json({ error: 'Failed to fetch dashboard data' })
-                }
-
-                // Format the response
-                const dashboardData = {
-                  summary: {
-                    totalOrders: orderCount.total_orders,
-                    totalMenuItems: menuCount.total_menu_items,
-                    totalLocations: locationCount.total_locations
-                  },
-                  recentOrders: recentOrders.map(order => ({
-                    ...order,
-                    items: JSON.parse(order.items),
-                    orderTime: new Date(order.order_time)
-                  })),
-                  orderStatusDistribution: statusDistribution
-                }
-
-                res.json(dashboardData)
-              }
-            )
-          }
-        )
-      })
-    })
-  })
+    res.json(dashboardData)
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error)
+    res.status(500).json({ error: 'Failed to fetch dashboard data' })
+  }
 })
 
 // Authentication Routes
