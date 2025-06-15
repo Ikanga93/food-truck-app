@@ -2,7 +2,6 @@ import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
-import sqlite3 from 'sqlite3'
 import Stripe from 'stripe'
 import { v4 as uuidv4 } from 'uuid'
 import dotenv from 'dotenv'
@@ -12,6 +11,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import multer from 'multer'
 import fs from 'fs'
+import { query, queryOne, queryAll, initializeDatabase } from './database.js'
 
 // Set timezone to Central Time
 process.env.TZ = 'America/Chicago'
@@ -93,172 +93,8 @@ if (process.env.NODE_ENV === 'production') {
 // Serve static files for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')))
 
-// Initialize SQLite Database
-const dbPath = process.env.NODE_ENV === 'production' ? './orders.db' : './server/orders.db'
-const db = new sqlite3.Database(dbPath)
-
-// Create tables
-db.serialize(() => {
-  // Users table
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    email TEXT UNIQUE,
-    phone TEXT UNIQUE,
-    password_hash TEXT,
-    role TEXT NOT NULL CHECK(role IN ('admin', 'customer')),
-    first_name TEXT,
-    last_name TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`)
-
-  // Customer profiles table
-  db.run(`CREATE TABLE IF NOT EXISTS customer_profiles (
-    user_id TEXT PRIMARY KEY,
-    address TEXT,
-    preferences TEXT,
-    loyalty_points INTEGER DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  )`)
-
-  // Admin profiles table
-  db.run(`CREATE TABLE IF NOT EXISTS admin_profiles (
-    user_id TEXT PRIMARY KEY,
-    restaurant_id TEXT,
-    permissions TEXT,
-    last_login DATETIME,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  )`)
-
-  // Authentication tokens table
-  db.run(`CREATE TABLE IF NOT EXISTS auth_tokens (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    token TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('access', 'refresh')),
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  )`)
-
-  // Orders table
-  db.run(`CREATE TABLE IF NOT EXISTS orders (
-    id TEXT PRIMARY KEY,
-    user_id TEXT,
-    customer_name TEXT NOT NULL,
-    customer_phone TEXT NOT NULL,
-    customer_email TEXT,
-    items TEXT NOT NULL,
-    subtotal REAL NOT NULL,
-    tax REAL NOT NULL,
-    total REAL NOT NULL,
-    status TEXT DEFAULT 'pending_payment',
-    location_id TEXT NOT NULL,
-    order_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    estimated_time INTEGER DEFAULT 20,
-    time_remaining INTEGER,
-    stripe_session_id TEXT,
-    payment_status TEXT DEFAULT 'pending',
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  )`)
-
-  // Migration: Add user_id column to existing orders table if it doesn't exist
-  db.run(`PRAGMA table_info(orders)`, [], (err, rows) => {
-    if (err) {
-      console.error('Error checking orders table schema:', err)
-      return
-    }
-    
-    // Check if user_id column exists
-    db.all(`PRAGMA table_info(orders)`, [], (err, columns) => {
-      if (err) {
-        console.error('Error getting table info:', err)
-        return
-      }
-      
-      const hasUserId = columns.some(col => col.name === 'user_id')
-      if (!hasUserId) {
-        console.log('Adding user_id column to orders table...')
-        db.run(`ALTER TABLE orders ADD COLUMN user_id TEXT`, (err) => {
-          if (err) {
-            console.error('Error adding user_id column:', err)
-          } else {
-            console.log('Successfully added user_id column to orders table')
-          }
-        })
-      }
-    })
-  })
-
-  // Order status history table
-  db.run(`CREATE TABLE IF NOT EXISTS order_status_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id TEXT NOT NULL,
-    status TEXT NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (order_id) REFERENCES orders (id)
-  )`)
-
-  // Menu items table
-  db.run(`CREATE TABLE IF NOT EXISTS menu_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    price REAL NOT NULL,
-    category TEXT NOT NULL,
-    emoji TEXT,
-    available BOOLEAN DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    image_url TEXT
-  )`)
-
-  // Migration: Add image_url column to existing menu_items table if it doesn't exist
-  db.run(`PRAGMA table_info(menu_items)`, [], (err, rows) => {
-    if (err) {
-      console.error('Error checking menu_items table schema:', err)
-      return
-    }
-    
-    // Check if image_url column exists
-    db.all(`PRAGMA table_info(menu_items)`, [], (err, columns) => {
-      if (err) {
-        console.error('Error getting menu_items table info:', err)
-        return
-      }
-      
-      const hasImageUrl = columns.some(col => col.name === 'image_url')
-      if (!hasImageUrl) {
-        console.log('Adding image_url column to menu_items table...')
-        db.run(`ALTER TABLE menu_items ADD COLUMN image_url TEXT`, (err) => {
-          if (err) {
-            console.error('Error adding image_url column:', err)
-          } else {
-            console.log('Successfully added image_url column to menu_items table')
-          }
-        })
-      }
-    })
-  })
-
-  // Locations table
-  db.run(`CREATE TABLE IF NOT EXISTS locations (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    type TEXT NOT NULL,
-    description TEXT,
-    address_street TEXT,
-    address_city TEXT,
-    address_state TEXT,
-    address_zip TEXT,
-    current_location TEXT,
-    status TEXT DEFAULT 'active',
-    schedule TEXT,
-    phone TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`)
-})
+// Initialize database
+initializeDatabase()
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -320,237 +156,165 @@ app.post('/api/orders', async (req, res) => {
       subtotal,
       tax,
       total,
-      locationId
+      locationId,
+      estimatedTime = 20,
+      userId = null
     } = req.body
 
-    const orderId = `ORD-${uuidv4().substring(0, 8).toUpperCase()}`
-    const estimatedTime = 20 // Default 20 minutes
-
-    // Create line items for Stripe
-    const lineItems = items.map(item => ({
-      price_data: {
-        currency: 'usd',
-        product_data: {
-          name: item.name,
-          description: `Fernando's Food Truck - ${item.name}`,
-        },
-        unit_amount: Math.round(item.price * 100), // Convert to cents
-      },
-      quantity: item.quantity,
-    }))
-
-    // Add tax as a line item if applicable
-    if (tax > 0) {
-      lineItems.push({
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: 'Tax',
-            description: 'Sales Tax',
-          },
-          unit_amount: Math.round(tax * 100),
-        },
-        quantity: 1,
-      })
+    // Validate required fields
+    if (!customerName || !customerPhone || !items || !subtotal || !tax || !total || !locationId) {
+      return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: lineItems,
-      mode: 'payment',
-      success_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/order-tracking/${orderId}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/?cancelled=true`,
-      customer_email: customerEmail,
-      metadata: {
-        orderId: orderId,
-        customerName: customerName,
-        customerPhone: customerPhone,
-        locationId: locationId
-      }
-    })
+    const orderId = `ORDER-${uuidv4().substring(0, 8).toUpperCase()}`
+    const timeRemaining = estimatedTime
 
     // Insert order into database with pending_payment status
-    db.run(
+    await query(
       `INSERT INTO orders (
         id, customer_name, customer_phone, customer_email, items, 
         subtotal, tax, total, location_id, estimated_time, time_remaining,
-        stripe_session_id, status, order_time
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        status, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        orderId,
-        customerName,
-        customerPhone,
-        customerEmail,
-        JSON.stringify(items),
-        subtotal,
-        tax,
-        total,
-        locationId,
-        estimatedTime,
-        estimatedTime,
-        session.id,
-        'pending_payment',
-        formatDateForDB()
-      ],
-      function(err) {
-        if (err) {
-          console.error('Database error:', err)
-          return res.status(500).json({ error: 'Failed to create order' })
-        }
-
-        // Add initial status to history
-        db.run(
-          'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
-          [orderId, 'pending_payment']
-        )
-
-        res.json({ 
-          orderId, 
-          checkoutUrl: session.url,
-          sessionId: session.id
-        })
-      }
+        orderId, customerName, customerPhone, customerEmail, JSON.stringify(items),
+        subtotal, tax, total, locationId, estimatedTime, timeRemaining,
+        'pending_payment', userId
+      ]
     )
+
+    // Add initial status to history
+    await query(
+      'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
+      [orderId, 'pending_payment']
+    )
+
+    res.json({ 
+      success: true, 
+      orderId,
+      message: 'Order created successfully'
+    })
+
   } catch (error) {
     console.error('Error creating order:', error)
-    res.status(500).json({ error: error.message })
+    res.status(500).json({ error: 'Failed to create order' })
   }
 })
 
 // Get all orders (for admin dashboard)
-app.get('/api/orders', (req, res) => {
-  db.all(
-    'SELECT * FROM orders ORDER BY order_time DESC',
-    [],
-    (err, rows) => {
-      if (err) {
-        console.error('Database error:', err)
-        return res.status(500).json({ error: 'Failed to fetch orders' })
-      }
-
-      const orders = rows.map(row => ({
-        ...row,
-        items: JSON.parse(row.items),
-        orderTime: new Date(row.order_time)
-      }))
-
-      res.json(orders)
-    }
-  )
+app.get('/api/orders', async (req, res) => {
+  try {
+    const rows = await queryAll('SELECT * FROM orders ORDER BY order_time DESC')
+    const orders = rows.map(row => ({
+      ...row,
+      items: JSON.parse(row.items),
+      orderTime: new Date(row.order_time)
+    }))
+    res.json(orders)
+  } catch (error) {
+    console.error('Error fetching orders:', error)
+    res.status(500).json({ error: 'Failed to fetch orders' })
+  }
 })
 
-// Get specific order (for customer tracking)
-app.get('/api/orders/:orderId', (req, res) => {
-  const { orderId } = req.params
-
-  db.get(
-    'SELECT * FROM orders WHERE id = ?',
-    [orderId],
-    (err, row) => {
-      if (err) {
-        console.error('Database error:', err)
-        return res.status(500).json({ error: 'Failed to fetch order' })
-      }
-
-      if (!row) {
-        return res.status(404).json({ error: 'Order not found' })
-      }
-
-      const order = {
-        ...row,
-        items: JSON.parse(row.items),
-        orderTime: new Date(row.order_time)
-      }
-
-      res.json(order)
+// Get specific order by ID
+app.get('/api/orders/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params
+    const row = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId])
+    
+    if (!row) {
+      return res.status(404).json({ error: 'Order not found' })
     }
-  )
+
+    const order = {
+      ...row,
+      items: JSON.parse(row.items),
+      orderTime: new Date(row.order_time)
+    }
+    res.json(order)
+  } catch (error) {
+    console.error('Error fetching order:', error)
+    res.status(500).json({ error: 'Failed to fetch order' })
+  }
 })
 
 // Get orders for a specific customer
-app.get('/api/orders/customer/:customerId', authenticateToken, (req, res) => {
-  const { customerId } = req.params
+app.get('/api/customers/:customerId/orders', authenticateToken, async (req, res) => {
+  try {
+    const { customerId } = req.params
 
-  // Ensure customer can only access their own orders
-  if (req.user.role === 'customer' && req.user.id !== customerId) {
-    return res.status(403).json({ error: 'Access denied' })
-  }
-
-  db.all(
-    'SELECT * FROM orders WHERE user_id = ? ORDER BY order_time DESC',
-    [customerId],
-    (err, rows) => {
-      if (err) {
-        console.error('Database error:', err)
-        return res.status(500).json({ error: 'Failed to fetch customer orders' })
-      }
-
-      const orders = rows.map(row => ({
-        ...row,
-        items: JSON.parse(row.items),
-        orderTime: new Date(row.order_time)
-      }))
-
-      res.json(orders)
+    // Check if the requesting user is the customer or an admin
+    if (req.user.role !== 'admin' && req.user.id !== customerId) {
+      return res.status(403).json({ error: 'Access denied' })
     }
-  )
+
+    const rows = await queryAll(
+      'SELECT * FROM orders WHERE user_id = ? ORDER BY order_time DESC',
+      [customerId]
+    )
+    
+    const orders = rows.map(row => ({
+      ...row,
+      items: JSON.parse(row.items),
+      orderTime: new Date(row.order_time)
+    }))
+    res.json(orders)
+  } catch (error) {
+    console.error('Error fetching customer orders:', error)
+    res.status(500).json({ error: 'Failed to fetch customer orders' })
+  }
 })
 
 // Update order status
-app.patch('/api/orders/:orderId/status', (req, res) => {
-  const { orderId } = req.params
-  const { status } = req.body
+app.put('/api/orders/:orderId/status', async (req, res) => {
+  try {
+    const { orderId } = req.params
+    const { status, timeRemaining } = req.body
 
-  // Calculate time remaining based on status
-  let timeRemaining = null
-  if (status === 'cooking') {
-    timeRemaining = 20 // Reset to estimated time when cooking starts
-  } else if (status === 'ready' || status === 'completed') {
-    timeRemaining = 0
-  }
-
-  const updateQuery = timeRemaining !== null 
-    ? 'UPDATE orders SET status = ?, time_remaining = ? WHERE id = ?'
-    : 'UPDATE orders SET status = ? WHERE id = ?'
-  
-  const params = timeRemaining !== null 
-    ? [status, timeRemaining, orderId]
-    : [status, orderId]
-
-  db.run(updateQuery, params, function(err) {
-    if (err) {
-      console.error('Database error:', err)
-      return res.status(500).json({ error: 'Failed to update order status' })
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' })
     }
 
-    if (this.changes === 0) {
+    const updateQuery = timeRemaining !== undefined
+      ? 'UPDATE orders SET status = ?, time_remaining = ? WHERE id = ?'
+      : 'UPDATE orders SET status = ? WHERE id = ?'
+    
+    const params = timeRemaining !== undefined
+      ? [status, timeRemaining, orderId]
+      : [status, orderId]
+
+    const result = await query(updateQuery, params)
+    
+    if (result.changes === 0) {
       return res.status(404).json({ error: 'Order not found' })
     }
 
     // Add status change to history
-    db.run(
+    await query(
       'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
       [orderId, status]
     )
 
     // Get updated order
-    db.get('SELECT * FROM orders WHERE id = ?', [orderId], (err, row) => {
-      if (row) {
-        const updatedOrder = {
-          ...row,
-          items: JSON.parse(row.items),
-          orderTime: new Date(row.order_time)
-        }
-
-        // Notify admin and customer of status change
-        io.to('admin').emit('order-updated', updatedOrder)
-        io.to(`order-${orderId}`).emit('order-status-updated', updatedOrder)
+    const row = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId])
+    if (row) {
+      const updatedOrder = {
+        ...row,
+        items: JSON.parse(row.items),
+        orderTime: new Date(row.order_time)
       }
-    })
 
-    res.json({ success: true })
-  })
+      // Emit to all connected clients
+      io.emit('orderUpdated', updatedOrder)
+      res.json(updatedOrder)
+    } else {
+      res.status(404).json({ error: 'Order not found' })
+    }
+  } catch (error) {
+    console.error('Error updating order status:', error)
+    res.status(500).json({ error: 'Failed to update order status' })
+  }
 })
 
 // Verify payment and update order
@@ -563,39 +327,32 @@ app.post('/api/verify-payment', async (req, res) => {
 
     if (session.payment_status === 'paid') {
       // Update order status to confirmed and payment to completed
-      db.run(
+      await query(
         'UPDATE orders SET payment_status = ?, status = ? WHERE id = ?',
-        ['completed', 'confirmed', orderId],
-        function(err) {
-          if (err) {
-            console.error('Database error:', err)
-            return res.status(500).json({ error: 'Failed to update order' })
-          }
-
-          // Add status change to history
-          db.run(
-            'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
-            [orderId, 'confirmed']
-          )
-
-          // Get updated order and notify admin
-          db.get('SELECT * FROM orders WHERE id = ?', [orderId], (err, row) => {
-            if (row) {
-              const updatedOrder = {
-                ...row,
-                items: JSON.parse(row.items),
-                orderTime: new Date(row.order_time)
-              }
-
-              // Notify admin of new paid order
-              io.to('admin').emit('new-order', updatedOrder)
-              io.to(`order-${orderId}`).emit('order-status-updated', updatedOrder)
-            }
-          })
-
-          res.json({ success: true, paymentStatus: 'completed' })
-        }
+        ['completed', 'confirmed', orderId]
       )
+
+      // Add status change to history
+      await query(
+        'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
+        [orderId, 'confirmed']
+      )
+
+      // Get updated order and notify admin
+      const row = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId])
+      if (row) {
+        const updatedOrder = {
+          ...row,
+          items: JSON.parse(row.items),
+          orderTime: new Date(row.order_time)
+        }
+
+        // Notify admin of new paid order
+        io.to('admin').emit('new-order', updatedOrder)
+        io.to(`order-${orderId}`).emit('order-status-updated', updatedOrder)
+      }
+
+      res.json({ success: true, paymentStatus: 'completed' })
     } else {
       res.json({ success: false, paymentStatus: session.payment_status })
     }
@@ -624,7 +381,7 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), (req, res) => 
       const orderId = session.metadata.orderId
       
       // Update order payment status
-      db.run(
+      query(
         'UPDATE orders SET payment_status = ?, status = ? WHERE stripe_session_id = ?',
         ['completed', 'confirmed', session.id]
       )
@@ -656,88 +413,80 @@ app.post('/api/upload-menu-image', upload.single('image'), (req, res) => {
 })
 
 // Get all menu items
-app.get('/api/menu', (req, res) => {
-  db.all('SELECT * FROM menu_items ORDER BY category, name', [], (err, rows) => {
-    if (err) {
-      console.error('Error fetching menu items:', err)
-      res.status(500).json({ error: 'Failed to fetch menu items' })
-    } else {
-      res.json(rows)
-    }
-  })
+app.get('/api/menu', async (req, res) => {
+  try {
+    const rows = await queryAll('SELECT * FROM menu_items ORDER BY category, name')
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching menu items:', error)
+    res.status(500).json({ error: 'Failed to fetch menu items' })
+  }
 })
 
 // Add new menu item
-app.post('/api/menu', (req, res) => {
-  const { name, description, price, category, emoji, available, image_url } = req.body
-  
-  if (!name || !price || !category) {
-    return res.status(400).json({ error: 'Name, price, and category are required' })
-  }
+app.post('/api/menu', async (req, res) => {
+  try {
+    const { name, description, price, category, emoji, available, image_url } = req.body
 
-  db.run(
-    'INSERT INTO menu_items (name, description, price, category, emoji, available, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [name, description, price, category, emoji, available !== false, image_url],
-    function(err) {
-      if (err) {
-        console.error('Error adding menu item:', err)
-        res.status(500).json({ error: 'Failed to add menu item' })
-      } else {
-        // Return the created item
-        db.get('SELECT * FROM menu_items WHERE id = ?', [this.lastID], (err, row) => {
-          if (err) {
-            res.status(500).json({ error: 'Failed to fetch created item' })
-          } else {
-            res.json(row)
-          }
-        })
-      }
+    if (!name || !price || !category) {
+      return res.status(400).json({ error: 'Name, price, and category are required' })
     }
-  )
+
+    const result = await query(
+      'INSERT INTO menu_items (name, description, price, category, emoji, available, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, description, price, category, emoji, available !== false, image_url]
+    )
+
+    // Return the created item
+    const row = await queryOne('SELECT * FROM menu_items WHERE id = ?', [result.lastID])
+    res.json(row)
+  } catch (error) {
+    console.error('Error adding menu item:', error)
+    res.status(500).json({ error: 'Failed to add menu item' })
+  }
 })
 
 // Update menu item
-app.put('/api/menu/:id', (req, res) => {
-  const { id } = req.params
-  const { name, description, price, category, emoji, available, image_url } = req.body
-  
-  db.run(
-    'UPDATE menu_items SET name = ?, description = ?, price = ?, category = ?, emoji = ?, available = ?, image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, description, price, category, emoji, available, image_url, id],
-    function(err) {
-      if (err) {
-        console.error('Error updating menu item:', err)
-        res.status(500).json({ error: 'Failed to update menu item' })
-      } else if (this.changes === 0) {
-        res.status(404).json({ error: 'Menu item not found' })
-      } else {
-        res.json({ success: true, changes: this.changes })
-      }
-    }
-  )
+app.put('/api/menu/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const { name, description, price, category, emoji, available, image_url } = req.body
+    
+    await query(
+      'UPDATE menu_items SET name = ?, description = ?, price = ?, category = ?, emoji = ?, available = ?, image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [name, description, price, category, emoji, available, image_url, id]
+    )
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error('Error updating menu item:', error)
+    res.status(500).json({ error: 'Failed to update menu item' })
+  }
 })
 
 // Delete menu item
-app.delete('/api/menu/:id', (req, res) => {
-  const { id } = req.params
-  
-  db.run('DELETE FROM menu_items WHERE id = ?', [id], function(err) {
-    if (err) {
-      console.error('Error deleting menu item:', err)
-      res.status(500).json({ error: 'Failed to delete menu item' })
-    } else if (this.changes === 0) {
-      res.status(404).json({ error: 'Menu item not found' })
-    } else {
-      res.json({ success: true, changes: this.changes })
+app.delete('/api/menu/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const result = await query('DELETE FROM menu_items WHERE id = ?', [id])
+    
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Menu item not found' })
     }
-  })
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting menu item:', error)
+    res.status(500).json({ error: 'Failed to delete menu item' })
+  }
 })
 
 // Locations API Routes
 
 // Get all locations
 app.get('/api/locations', (req, res) => {
-  db.all('SELECT * FROM locations ORDER BY name', [], (err, rows) => {
+  query('SELECT * FROM locations ORDER BY name', [], (err, rows) => {
     if (err) {
       console.error('Error fetching locations:', err)
       res.status(500).json({ error: 'Failed to fetch locations' })
@@ -755,7 +504,7 @@ app.post('/api/locations', (req, res) => {
     return res.status(400).json({ error: 'ID and name are required' })
   }
 
-  db.run(
+  query(
     'INSERT INTO locations (id, name, type, description, current_location, schedule, phone, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     [id, name, type || 'mobile', description, current_location, schedule, phone, status || 'active'],
     function(err) {
@@ -767,10 +516,10 @@ app.post('/api/locations', (req, res) => {
           res.status(500).json({ error: 'Failed to add location' })
         }
       } else {
-        // Return the created location
-        db.get('SELECT * FROM locations WHERE id = ?', [id], (err, row) => {
+        // Return the created item
+        query('SELECT * FROM locations WHERE id = ?', [this.lastID], (err, row) => {
           if (err) {
-            res.status(500).json({ error: 'Failed to fetch created location' })
+            res.status(500).json({ error: 'Failed to fetch created item' })
           } else {
             res.json(row)
           }
@@ -785,7 +534,7 @@ app.put('/api/locations/:id', (req, res) => {
   const { id } = req.params
   const { name, type, description, current_location, schedule, phone, status } = req.body
   
-  db.run(
+  query(
     'UPDATE locations SET name = ?, type = ?, description = ?, current_location = ?, schedule = ?, phone = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
     [name, type, description, current_location, schedule, phone, status, id],
     function(err) {
@@ -805,7 +554,7 @@ app.put('/api/locations/:id', (req, res) => {
 app.delete('/api/locations/:id', (req, res) => {
   const { id } = req.params
   
-  db.run('DELETE FROM locations WHERE id = ?', [id], function(err) {
+  query('DELETE FROM locations WHERE id = ?', [id], function(err) {
     if (err) {
       console.error('Error deleting location:', err)
       res.status(500).json({ error: 'Failed to delete location' })
@@ -819,7 +568,7 @@ app.delete('/api/locations/:id', (req, res) => {
 
 // Timer to update cooking orders
 setInterval(() => {
-  db.all(
+  query(
     'SELECT * FROM orders WHERE status = "cooking" AND time_remaining > 0',
     [],
     (err, rows) => {
@@ -829,20 +578,20 @@ setInterval(() => {
         const newTimeRemaining = Math.max(0, order.time_remaining - 1)
         const newStatus = newTimeRemaining === 0 ? 'ready' : 'cooking'
 
-        db.run(
+        query(
           'UPDATE orders SET time_remaining = ?, status = ? WHERE id = ?',
           [newTimeRemaining, newStatus, order.id],
           () => {
             if (newStatus === 'ready') {
               // Add status change to history
-              db.run(
+              query(
                 'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
                 [order.id, 'ready']
               )
             }
 
             // Get updated order and emit to clients
-            db.get('SELECT * FROM orders WHERE id = ?', [order.id], (err, updatedRow) => {
+            query('SELECT * FROM orders WHERE id = ?', [order.id], (err, updatedRow) => {
               if (updatedRow) {
                 const updatedOrder = {
                   ...updatedRow,
@@ -864,26 +613,26 @@ setInterval(() => {
 // Dashboard API Route
 app.get('/api/dashboard', (req, res) => {
   // Get counts and statistics from database
-  db.get('SELECT COUNT(*) as total_orders FROM orders', [], (err, orderCount) => {
+  query('SELECT COUNT(*) as total_orders FROM orders', [], (err, orderCount) => {
     if (err) {
       console.error('Error fetching order count:', err)
       return res.status(500).json({ error: 'Failed to fetch dashboard data' })
     }
 
-    db.get('SELECT COUNT(*) as total_menu_items FROM menu_items', [], (err, menuCount) => {
+    query('SELECT COUNT(*) as total_menu_items FROM menu_items', [], (err, menuCount) => {
       if (err) {
         console.error('Error fetching menu count:', err)
         return res.status(500).json({ error: 'Failed to fetch dashboard data' })
       }
 
-      db.get('SELECT COUNT(*) as total_locations FROM locations', [], (err, locationCount) => {
+      query('SELECT COUNT(*) as total_locations FROM locations', [], (err, locationCount) => {
         if (err) {
           console.error('Error fetching location count:', err)
           return res.status(500).json({ error: 'Failed to fetch dashboard data' })
         }
 
         // Get recent orders
-        db.all(
+        query(
           'SELECT * FROM orders ORDER BY order_time DESC LIMIT 5',
           [],
           (err, recentOrders) => {
@@ -893,7 +642,7 @@ app.get('/api/dashboard', (req, res) => {
             }
 
             // Get order status distribution
-            db.all(
+            query(
               'SELECT status, COUNT(*) as count FROM orders GROUP BY status',
               [],
               (err, statusDistribution) => {
@@ -932,30 +681,17 @@ app.get('/api/dashboard', (req, res) => {
 // Register new user
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, phone, password, role, firstName, lastName } = req.body
+    const { email, phone, password, role = 'customer', firstName, lastName } = req.body
 
-    // Validate required fields
-    if (!email && !phone) {
-      return res.status(400).json({ error: 'Email or phone is required' })
-    }
-    if (!password) {
-      return res.status(400).json({ error: 'Password is required' })
-    }
-    if (!role || !['admin', 'customer'].includes(role)) {
-      return res.status(400).json({ error: 'Valid role is required' })
+    if (!email || !phone || !password) {
+      return res.status(400).json({ error: 'Email, phone, and password are required' })
     }
 
     // Check if user already exists
-    const existingUser = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT * FROM users WHERE email = ? OR phone = ?',
-        [email, phone],
-        (err, row) => {
-          if (err) reject(err)
-          resolve(row)
-        }
-      )
-    })
+    const existingUser = await queryOne(
+      'SELECT * FROM users WHERE email = ? OR phone = ?',
+      [email, phone]
+    )
 
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' })
@@ -967,70 +703,39 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Create user
     const userId = `USER-${uuidv4().substring(0, 8).toUpperCase()}`
-    await new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO users (id, email, phone, password_hash, role, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [userId, email, phone, passwordHash, role, firstName, lastName],
-        (err) => {
-          if (err) reject(err)
-          resolve()
-        }
-      )
-    })
+    await query(
+      'INSERT INTO users (id, email, phone, password_hash, role, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [userId, email, phone, passwordHash, role, firstName, lastName]
+    )
 
     // Create profile based on role
     if (role === 'customer') {
-      await new Promise((resolve, reject) => {
-        db.run(
-          'INSERT INTO customer_profiles (user_id) VALUES (?)',
-          [userId],
-          (err) => {
-            if (err) reject(err)
-            resolve()
-          }
-        )
-      })
+      await query('INSERT INTO customer_profiles (user_id) VALUES (?)', [userId])
     } else if (role === 'admin') {
-      await new Promise((resolve, reject) => {
-        db.run(
-          'INSERT INTO admin_profiles (user_id) VALUES (?)',
-          [userId],
-          (err) => {
-            if (err) reject(err)
-            resolve()
-          }
-        )
-      })
+      await query('INSERT INTO admin_profiles (user_id) VALUES (?)', [userId])
     }
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { id: userId, role },
-      process.env.JWT_SECRET || 'your-secret-key',
+      { id: userId, email, role },
+      process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '1h' }
     )
+
     const refreshToken = jwt.sign(
       { id: userId },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     )
 
     // Store refresh token
-    await new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+7 days"))',
-        [uuidv4(), userId, refreshToken, 'refresh'],
-        (err) => {
-          if (err) reject(err)
-          resolve()
-        }
-      )
-    })
+    await query(
+      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+7 days"))',
+      [uuidv4(), userId, refreshToken, 'refresh']
+    )
 
     res.json({
-      message: 'Registration successful',
-      accessToken,
-      refreshToken,
+      success: true,
       user: {
         id: userId,
         email,
@@ -1038,8 +743,11 @@ app.post('/api/auth/register', async (req, res) => {
         role,
         firstName,
         lastName
-      }
+      },
+      accessToken,
+      refreshToken
     })
+
   } catch (error) {
     console.error('Registration error:', error)
     res.status(500).json({ error: 'Registration failed' })
@@ -1051,78 +759,55 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, phone, password } = req.body
 
-    // Validate input
-    if (!email && !phone) {
-      return res.status(400).json({ error: 'Email or phone is required' })
-    }
-    if (!password) {
-      return res.status(400).json({ error: 'Password is required' })
+    if ((!email && !phone) || !password) {
+      return res.status(400).json({ error: 'Email/phone and password are required' })
     }
 
     // Find user
-    const user = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT * FROM users WHERE email = ? OR phone = ?',
-        [email, phone],
-        (err, row) => {
-          if (err) reject(err)
-          resolve(row)
-        }
-      )
-    })
+    const user = await queryOne(
+      'SELECT * FROM users WHERE email = ? OR phone = ?',
+      [email || phone, phone || email]
+    )
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
 
-    // Verify password
-    const validPassword = await bcrypt.compare(password, user.password_hash)
-    if (!validPassword) {
+    // Check password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash)
+    if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' })
     }
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET || 'your-secret-key',
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '1h' }
     )
+
     const refreshToken = jwt.sign(
       { id: user.id },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     )
 
     // Store refresh token
-    await new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+7 days"))',
-        [uuidv4(), user.id, refreshToken, 'refresh'],
-        (err) => {
-          if (err) reject(err)
-          resolve()
-        }
-      )
-    })
+    await query(
+      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, datetime("now", "+7 days"))',
+      [uuidv4(), user.id, refreshToken, 'refresh']
+    )
 
     // Update last login for admin
     if (user.role === 'admin') {
-      await new Promise((resolve, reject) => {
-        db.run(
-          'UPDATE admin_profiles SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?',
-          [user.id],
-          (err) => {
-            if (err) reject(err)
-            resolve()
-          }
-        )
-      })
+      await query(
+        'UPDATE admin_profiles SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?',
+        [user.id]
+      )
     }
 
     res.json({
-      message: 'Login successful',
-      accessToken,
-      refreshToken,
+      success: true,
       user: {
         id: user.id,
         email: user.email,
@@ -1130,8 +815,11 @@ app.post('/api/auth/login', async (req, res) => {
         role: user.role,
         firstName: user.first_name,
         lastName: user.last_name
-      }
+      },
+      accessToken,
+      refreshToken
     })
+
   } catch (error) {
     console.error('Login error:', error)
     res.status(500).json({ error: 'Login failed' })
@@ -1148,35 +836,23 @@ app.post('/api/auth/refresh', async (req, res) => {
     }
 
     // Verify refresh token
-    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET || 'your-secret-key')
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET || 'fallback-secret')
 
     // Check if token exists in database
-    const token = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT * FROM auth_tokens WHERE token = ? AND type = "refresh" AND expires_at > CURRENT_TIMESTAMP',
-        [refreshToken],
-        (err, row) => {
-          if (err) reject(err)
-          resolve(row)
-        }
-      )
-    })
+    const token = await queryOne(
+      'SELECT * FROM auth_tokens WHERE token = ? AND type = "refresh" AND expires_at > CURRENT_TIMESTAMP',
+      [refreshToken]
+    )
 
     if (!token) {
       return res.status(401).json({ error: 'Invalid refresh token' })
     }
 
     // Get user
-    const user = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT * FROM users WHERE id = ?',
-        [decoded.id],
-        (err, row) => {
-          if (err) reject(err)
-          resolve(row)
-        }
-      )
-    })
+    const user = await queryOne(
+      'SELECT * FROM users WHERE id = ?',
+      [decoded.id]
+    )
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' })
@@ -1184,8 +860,8 @@ app.post('/api/auth/refresh', async (req, res) => {
 
     // Generate new access token
     const accessToken = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET || 'your-secret-key',
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '1h' }
     )
 
@@ -1213,16 +889,10 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
 
     if (refreshToken) {
       // Remove refresh token from database
-      await new Promise((resolve, reject) => {
-        db.run(
-          'DELETE FROM auth_tokens WHERE token = ? AND user_id = ?',
-          [refreshToken, req.user.id],
-          (err) => {
-            if (err) reject(err)
-            resolve()
-          }
-        )
-      })
+      await query(
+        'DELETE FROM auth_tokens WHERE token = ? AND user_id = ?',
+        [refreshToken, req.user.id]
+      )
     }
 
     res.json({ message: 'Logout successful' })
@@ -1235,16 +905,10 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
 // Get current user
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
-    const user = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT * FROM users WHERE id = ?',
-        [req.user.id],
-        (err, row) => {
-          if (err) reject(err)
-          resolve(row)
-        }
-      )
-    })
+    const user = await queryOne(
+      'SELECT * FROM users WHERE id = ?',
+      [req.user.id]
+    )
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' })

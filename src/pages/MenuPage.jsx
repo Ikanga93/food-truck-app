@@ -5,6 +5,8 @@ import { useCart } from '../context/CartContext'
 import ApiService from '../services/ApiService'
 import './MenuPage.css'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
 const MenuPage = () => {
   const { addToCart, updateQuantity, cartItems } = useCart()
   const [activeCategory, setActiveCategory] = useState('all')
@@ -159,42 +161,55 @@ const MenuPage = () => {
               </div>
             ) : (
               filteredItems.map((item) => (
-                <div key={item.id} className="menu-item-card">
-                  <div className="item-emoji-large">{item.emoji}</div>
-                  <div className="item-details">
-                    <div className="item-header">
-                      <h3 className="item-name">{item.name}</h3>
-                      <span className="item-price">${item.price.toFixed(2)}</span>
+                <div key={item.id} className="menu-item">
+                  <div className="menu-item-image">
+                    {item.image_url ? (
+                      <img 
+                        src={`${API_BASE_URL}${item.image_url}`} 
+                        alt={item.name}
+                        className="menu-image"
+                      />
+                    ) : (
+                      <div className="menu-emoji">{item.emoji}</div>
+                    )}
+                  </div>
+                  <div className="menu-item-content">
+                    <div className="menu-item-header">
+                      <div className="menu-item-info">
+                        <h4>{item.name}</h4>
+                        <p className="menu-description">{item.description}</p>
+                        <div className="menu-price">${item.price.toFixed(2)}</div>
+                      </div>
                     </div>
-                    <p className="item-description">{item.description}</p>
-                    <div className="item-category-badge">{item.category}</div>
                     
-                    <div className="item-actions">
-                      {getItemQuantity(item.id) > 0 ? (
-                        <div className="quantity-controls">
+                    <div className="menu-item-actions">
+                      <div className="action-buttons">
+                        {getItemQuantity(item.id) > 0 ? (
+                          <div className="quantity-controls">
+                            <button 
+                              className="quantity-btn"
+                              onClick={() => handleQuantityChange(item, -1)}
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <span className="quantity">{getItemQuantity(item.id)}</span>
+                            <button 
+                              className="quantity-btn"
+                              onClick={() => handleQuantityChange(item, 1)}
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                        ) : (
                           <button 
-                            className="quantity-btn"
-                            onClick={() => handleQuantityChange(item, -1)}
+                            className="add-to-cart-btn"
+                            onClick={() => handleAddToCart(item)}
                           >
-                            <Minus size={16} />
+                            <ShoppingCart size={16} />
+                            Add to Cart
                           </button>
-                          <span className="quantity">{getItemQuantity(item.id)}</span>
-                          <button 
-                            className="quantity-btn"
-                            onClick={() => handleQuantityChange(item, 1)}
-                          >
-                            <Plus size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button 
-                          className="add-to-cart-btn"
-                          onClick={() => handleAddToCart(item)}
-                        >
-                          <ShoppingCart size={16} />
-                          Add to Cart
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -207,4 +222,4 @@ const MenuPage = () => {
   )
 }
 
-export default MenuPage 
+export default MenuPage

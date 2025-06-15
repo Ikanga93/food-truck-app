@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { ShoppingCart, Plus, Minus, ChevronDown, ChevronUp } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import ApiService from '../services/ApiService'
-import API_BASE_URL from '../config/api.js'
 import './Menu.css'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 const Menu = () => {
   const { addToCart } = useCart()
@@ -220,7 +221,7 @@ const Menu = () => {
     return (
       <section className="menu-section" id="menu">
         <div className="container">
-          <h2>Our Menu</h2>
+          <h2>Most Liked</h2>
           <div className="loading-state">
             <p>Loading delicious menu items...</p>
           </div>
@@ -233,7 +234,7 @@ const Menu = () => {
     return (
       <section className="menu-section" id="menu">
         <div className="container">
-          <h2>Our Menu</h2>
+          <h2>Most Liked</h2>
           <div className="error-state">
             <p>{error}</p>
             <button onClick={loadMenuItems} className="retry-btn">
@@ -249,7 +250,7 @@ const Menu = () => {
     return (
       <section className="menu-section" id="menu">
         <div className="container">
-          <h2>Our Menu</h2>
+          <h2>Most Liked</h2>
           <div className="empty-menu">
             <p>We're updating our menu. Please check back soon!</p>
           </div>
@@ -261,13 +262,13 @@ const Menu = () => {
   return (
     <section className="menu-section" id="menu">
       <div className="container">
-        <h2>Our Menu</h2>
+        <h2>Most Liked</h2>
         <p className="menu-subtitle">Authentic Mexican flavors made fresh daily</p>
         
         {Object.entries(groupedItems).map(([category, items]) => (
           <div key={category} className="menu-category">
             <h3 className="category-title">{category}</h3>
-            <div className="menu-grid">
+            <div className="menu-items">
               {items.map(item => (
                 <div key={item.id} className="menu-item">
                   <div className="menu-item-image">
@@ -287,10 +288,12 @@ const Menu = () => {
                       <div className="menu-item-info">
                         <h4>{item.name}</h4>
                         <p className="menu-description">{item.description}</p>
-                        <span className="menu-price">${item.price.toFixed(2)}</span>
+                        <div className="menu-price">${parseFloat(item.price).toFixed(2)}</div>
                       </div>
-                      
-                      <div className="menu-item-actions">
+                    </div>
+                    
+                    <div className="menu-item-actions">
+                      <div className="action-buttons">
                         {item.options && item.options.length > 0 && (
                           <button 
                             className="options-toggle-btn"
@@ -316,7 +319,7 @@ const Menu = () => {
                           disabled={!canAddToCart(item)}
                         >
                           <ShoppingCart size={16} />
-                          Add
+                          Add to Cart
                         </button>
                       </div>
                     </div>
