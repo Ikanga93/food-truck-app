@@ -651,55 +651,40 @@ app.get('/api/dashboard', async (req, res) => {
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, phone, password, role = 'customer', firstName, lastName } = req.body
-    console.log('Registration attempt:', { email, phone, role, firstName, lastName })
 
     if (!email || !phone || !password) {
-      console.log('Missing required fields')
       return res.status(400).json({ error: 'Email, phone, and password are required' })
     }
 
     // Check if user already exists
-    console.log('Checking for existing user...')
     const existingUser = await queryOne(
       'SELECT * FROM users WHERE email = ? OR phone = ?',
       [email, phone]
     )
-    console.log('Existing user check result:', existingUser)
 
     if (existingUser) {
-      console.log('User already exists')
       return res.status(400).json({ error: 'User already exists' })
     }
 
     // Hash password
-    console.log('Hashing password...')
     const salt = await bcrypt.genSalt(10)
     const passwordHash = await bcrypt.hash(password, salt)
-    console.log('Password hashed successfully')
 
     // Create user
-    console.log('Creating user...')
     const userId = `USER-${uuidv4().substring(0, 8).toUpperCase()}`
-    console.log('Generated user ID:', userId)
-    
     await query(
       'INSERT INTO users (id, email, phone, password_hash, role, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [userId, email, phone, passwordHash, role, firstName, lastName]
     )
-    console.log('User created successfully')
 
     // Create profile based on role
-    console.log('Creating profile for role:', role)
     if (role === 'customer') {
       await query('INSERT INTO customer_profiles (user_id) VALUES (?)', [userId])
-      console.log('Customer profile created')
     } else if (role === 'admin') {
       await query('INSERT INTO admin_profiles (user_id) VALUES (?)', [userId])
-      console.log('Admin profile created')
     }
 
     // Generate tokens
-    console.log('Generating tokens...')
     const accessToken = jwt.sign(
       { id: userId, email, role },
       process.env.JWT_SECRET || 'fallback-secret',
@@ -711,18 +696,14 @@ app.post('/api/auth/register', async (req, res) => {
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     )
-    console.log('Tokens generated successfully')
 
     // Store refresh token
-    console.log('Storing refresh token...')
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
     await query(
       'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, ?)',
       [uuidv4(), userId, refreshToken, 'refresh', expiresAt]
     )
-    console.log('Refresh token stored successfully')
 
-    console.log('Registration completed successfully for user:', userId)
     res.json({
       success: true,
       user: {
@@ -739,9 +720,7 @@ app.post('/api/auth/register', async (req, res) => {
 
   } catch (error) {
     console.error('Registration error:', error)
-    console.error('Error stack:', error.stack)
-    console.error('Error details:', error.message)
-    res.status(500).json({ error: 'Registration failed', details: error.message })
+    res.status(500).json({ error: 'Registration failed' })
   }
 })
 
