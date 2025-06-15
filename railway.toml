@@ -13,7 +13,8 @@ source = "."
 [services.variables]
 NODE_ENV = "production"
 PORT = "3001"
-DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+# Railway will automatically provide DATABASE_URL when PostgreSQL service is linked
+# DATABASE_URL = "${{Postgres.DATABASE_URL}}"
 JWT_SECRET = "af677aa29c52ad63ae9ca5bde248841b4fd600deb5aebacc4fa845a9d6e63878f791789c19c388c370457695b19b11c7d37844173c85981ecfaa8c15845fd305"
 
 [variables]
