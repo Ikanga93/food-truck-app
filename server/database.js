@@ -27,12 +27,14 @@ console.log('POSTGRES_URL exists:', !!process.env.POSTGRES_URL)
 console.log('hasPostgresUrl:', hasPostgresUrl)
 
 let db
+let isPostgreSQL = false
 
 if (isDevelopment) {
   // Development only: Use SQLite
   console.log('🔧 Development mode: Using SQLite database')
   const dbPath = path.join(__dirname, 'orders.db')
   db = new sqlite3.Database(dbPath)
+  isPostgreSQL = false
 } else if (hasPostgresUrl) {
   // Production: Use PostgreSQL on Railway
   console.log('🚀 Production mode: Using PostgreSQL database')
@@ -57,6 +59,7 @@ if (isDevelopment) {
   })
   
   db = pool
+  isPostgreSQL = true
 } else {
   // Production fallback - but this should not happen on Railway
   console.error('❌ CRITICAL: No PostgreSQL database URL found in production!')
@@ -65,12 +68,30 @@ if (isDevelopment) {
   
   const dbPath = './orders.db'
   db = new sqlite3.Database(dbPath)
+  isPostgreSQL = false
 }
 
 // Helper function to run queries
 export const query = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment) {
+    if (isPostgreSQL) {
+      // PostgreSQL
+      db.query(sql, params)
+        .then(result => {
+          if (sql.includes('INSERT') || sql.includes('UPDATE') || sql.includes('DELETE')) {
+            resolve({ 
+              insertId: result.insertId || result.rows[0]?.id, 
+              changes: result.rowCount,
+              lastID: result.insertId || result.rows[0]?.id
+            })
+          } else if (sql.includes('SELECT') && sql.includes('LIMIT 1')) {
+            resolve(result.rows[0])
+          } else {
+            resolve(result.rows)
+          }
+        })
+        .catch(err => reject(err))
+    } else {
       // SQLite
       if (sql.includes('INSERT') || sql.includes('UPDATE') || sql.includes('DELETE')) {
         db.run(sql, params, function(err) {
@@ -90,23 +111,6 @@ export const query = (sql, params = []) => {
           else resolve(rows)
         })
       }
-    } else {
-      // PostgreSQL
-      db.query(sql, params)
-        .then(result => {
-          if (sql.includes('INSERT') || sql.includes('UPDATE') || sql.includes('DELETE')) {
-            resolve({ 
-              insertId: result.insertId || result.rows[0]?.id, 
-              changes: result.rowCount,
-              lastID: result.insertId || result.rows[0]?.id
-            })
-          } else if (sql.includes('SELECT') && sql.includes('LIMIT 1')) {
-            resolve(result.rows[0])
-          } else {
-            resolve(result.rows)
-          }
-        })
-        .catch(err => reject(err))
     }
   })
 }
@@ -114,15 +118,15 @@ export const query = (sql, params = []) => {
 // Helper function for single row queries
 export const queryOne = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment) {
+    if (isPostgreSQL) {
+      db.query(sql, params)
+        .then(result => resolve(result.rows[0]))
+        .catch(err => reject(err))
+    } else {
       db.get(sql, params, (err, row) => {
         if (err) reject(err)
         else resolve(row)
       })
-    } else {
-      db.query(sql, params)
-        .then(result => resolve(result.rows[0]))
-        .catch(err => reject(err))
     }
   })
 }
@@ -130,15 +134,15 @@ export const queryOne = (sql, params = []) => {
 // Helper function for multiple row queries
 export const queryAll = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment) {
+    if (isPostgreSQL) {
+      db.query(sql, params)
+        .then(result => resolve(result.rows))
+        .catch(err => reject(err))
+    } else {
       db.all(sql, params, (err, rows) => {
         if (err) reject(err)
         else resolve(rows)
       })
-    } else {
-      db.query(sql, params)
-        .then(result => resolve(result.rows))
-        .catch(err => reject(err))
     }
   })
 }
@@ -146,12 +150,12 @@ export const queryAll = (sql, params = []) => {
 // Initialize database tables
 export const initializeDatabase = async () => {
   try {
-    if (isDevelopment) {
-      // SQLite table creation (keep existing structure)
-      await initializeSQLiteTables()
-    } else {
+    if (isPostgreSQL) {
       // PostgreSQL table creation (convert SQLite to PostgreSQL syntax)
       await initializePostgreSQLTables()
+    } else {
+      // SQLite table creation (keep existing structure)
+      await initializeSQLiteTables()
     }
     console.log('✅ Database tables initialized successfully')
   } catch (error) {

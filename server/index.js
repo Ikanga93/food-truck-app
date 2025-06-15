@@ -13,6 +13,9 @@ import multer from 'multer'
 import fs from 'fs'
 import { query, queryOne, queryAll, initializeDatabase } from './database.js'
 
+// Load environment variables first
+dotenv.config()
+
 // Set timezone to Central Time
 process.env.TZ = 'America/Chicago'
 
@@ -28,8 +31,6 @@ const formatDateForDB = (date = new Date()) => {
     .slice(0, 19)
     .replace('T', ' ')
 }
-
-dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

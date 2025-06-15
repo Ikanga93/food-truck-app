@@ -4,7 +4,7 @@ builder = "nixpacks"
 [deploy]
 startCommand = "npm run start:railway"
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
+restartPolicyMaxRetries = 3
 
 [[services]]
 name = "web"
@@ -14,4 +14,13 @@ source = "."
 NODE_ENV = "production"
 PORT = "3001"
 DATABASE_URL = "${{Postgres.DATABASE_URL}}"
-JWT_SECRET = "your-secure-production-jwt-secret-key-change-this"
+JWT_SECRET = "af677aa29c52ad63ae9ca5bde248841b4fd600deb5aebacc4fa845a9d6e63878f791789c19c388c370457695b19b11c7d37844173c85981ecfaa8c15845fd305"
+
+[variables]
+NODE_ENV = "production"
+FRONTEND_URL = "https://your-app.up.railway.app"
+STRIPE_PUBLISHABLE_KEY = "your_stripe_publishable_key"
+STRIPE_SECRET_KEY = "your_stripe_secret_key"
+
+[environments.production]
+variables = {}
