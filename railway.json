@@ -10,9 +10,7 @@
   },
   "environments": {
     "production": {
-      "variables": {
-        "PORT": "3001"
-      }
+      "variables": {}
     }
   }
 } 
