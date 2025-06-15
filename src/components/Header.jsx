@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom'
 import { Menu, X, ShoppingCart, User, ChevronDown, LogOut } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 import { useCustomerAuth } from '../contexts/CustomerAuthContext'
-import Logo from './Logo'
 import './Header.css'
 
 const Header = ({ onCartOpen }) => {
@@ -45,7 +44,6 @@ const Header = ({ onCartOpen }) => {
       <div className="container">
         <div className="header-content">
           <Link to="/" className="logo">
-            <Logo size={50} className="logo-image" />
             <div className="logo-text">
               <h1>Fernando's</h1>
               <span>Auténtica Comida Mexicana</span>

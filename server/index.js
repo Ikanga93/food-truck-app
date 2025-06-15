@@ -479,9 +479,24 @@ app.post('/api/menu', authenticateToken, authorizeRole(['admin']), async (req, r
       [name, description, price, category, emoji, available !== false, image_url]
     )
 
-    // Return the created item
-    const row = await queryOne('SELECT * FROM menu_items WHERE id = ?', [result.lastID])
-    res.json(row)
+    // Return the created item - handle both SQLite and PostgreSQL
+    let createdItem
+    if (result.lastID) {
+      // SQLite case
+      createdItem = await queryOne('SELECT * FROM menu_items WHERE id = ?', [result.lastID])
+    } else {
+      // PostgreSQL case - get the most recently inserted item for this name
+      createdItem = await queryOne(
+        'SELECT * FROM menu_items WHERE name = ? AND category = ? ORDER BY created_at DESC LIMIT 1',
+        [name, category]
+      )
+    }
+    
+    if (!createdItem) {
+      return res.status(500).json({ error: 'Failed to retrieve created menu item' })
+    }
+    
+    res.json(createdItem)
   } catch (error) {
     console.error('Error adding menu item:', error)
     res.status(500).json({ error: 'Failed to add menu item' })

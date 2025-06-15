@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Phone, Mail, Facebook } from 'lucide-react'
+import Logo from './Logo'
 import './Footer.css'
 
 const Footer = () => {
@@ -9,8 +10,13 @@ const Footer = () => {
       <div className="container">
         <div className="footer-content">
           <div className="footer-brand">
-            <h3>Fernando's</h3>
-            <p>Auténtica Comida Mexicana</p>
+            <div className="footer-logo">
+              <Logo size={60} className="footer-logo-image" />
+              <div className="footer-brand-text">
+                <h3>Fernando's</h3>
+                <p>Auténtica Comida Mexicana</p>
+              </div>
+            </div>
             <div className="footer-emoji">🌮❤️🇲🇽</div>
           </div>
           
