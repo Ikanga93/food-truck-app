@@ -288,7 +288,7 @@ const Menu = () => {
                       <div className="menu-item-info">
                         <h4>{item.name}</h4>
                         <p className="menu-description">{item.description}</p>
-                        <div className="menu-price">${parseFloat(item.price).toFixed(2)}</div>
+                        <div className="menu-price">${(parseFloat(item.price) || 0).toFixed(2)}</div>
                       </div>
                     </div>
                     
@@ -356,7 +356,7 @@ const Menu = () => {
                                     />
                                     <span className="option-choice-name">{choice.name}</span>
                                     {choice.price > 0 && (
-                                      <span className="option-choice-price">+${choice.price.toFixed(2)}</span>
+                                      <span className="option-choice-price">+${(parseFloat(choice.price) || 0).toFixed(2)}</span>
                                     )}
                                   </label>
                                 </div>
