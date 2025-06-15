@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   overflow: hidden;
-  padding-top: 80px;
+  padding-top: 20px;
 }
 
 .hero-background {
@@ -181,8 +181,8 @@
 
 @media (max-width: 768px) {
   .hero {
-    padding-top: 120px;
-    min-height: calc(100vh - 40px);
+    padding-top: 20px;
+    min-height: calc(100vh - 80px);
   }
 
   .hero-content {
