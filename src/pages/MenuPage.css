@@ -90,17 +90,25 @@
 
 .menu-categories {
   display: flex;
-  justify-content: center;
-  gap: 20px;
+  gap: 16px;
   margin-bottom: 50px;
-  flex-wrap: wrap;
+  overflow-x: auto;
+  padding: 0 16px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.menu-categories::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .category-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 12px 20px;
   border: 2px solid var(--cream);
   background: var(--cream);
   border-radius: 25px;
@@ -109,6 +117,9 @@
   color: var(--text-dark);
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: fit-content;
 }
 
 .category-btn:hover {
@@ -355,6 +366,13 @@
 
 /* Tablet Responsive Design (768px - 1024px) */
 @media (max-width: 1024px) and (min-width: 769px) {
+  .menu-categories {
+    justify-content: center;
+    overflow-x: visible;
+    flex-wrap: wrap;
+    padding: 0;
+  }
+  
   .menu-items-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 1.25rem;
@@ -378,6 +396,16 @@
 
   .menu-page-subtitle {
     font-size: 1.1rem;
+  }
+
+  .menu-categories {
+    margin-bottom: 40px;
+    padding: 0 8px;
+  }
+
+  .category-btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
   }
 
   .menu-items-grid {
@@ -449,6 +477,21 @@
     font-size: 0.95rem;
   }
 
+  .menu-categories {
+    margin-bottom: 30px;
+    padding: 0 4px;
+  }
+
+  .category-btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    gap: 6px;
+  }
+
+  .category-emoji {
+    font-size: 1rem;
+  }
+
   .menu-items-grid {
     grid-template-columns: 1fr;
     gap: 1.25rem;
@@ -500,5 +543,21 @@
 
   .quantity {
     font-size: 0.95rem;
+  }
+}
+
+/* Desktop Responsive Design (min-width: 1025px) */
+@media (min-width: 1025px) {
+  .menu-categories {
+    justify-content: center;
+    overflow-x: visible;
+    flex-wrap: wrap;
+    padding: 0;
+    gap: 20px;
+  }
+  
+  .category-btn {
+    padding: 12px 24px;
+    font-size: 1rem;
   }
 }
