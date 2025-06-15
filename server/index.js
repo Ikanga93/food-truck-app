@@ -698,9 +698,10 @@ app.post('/api/auth/register', async (req, res) => {
     )
 
     // Store refresh token
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
     await query(
-      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, NOW() + INTERVAL \'7 days\')',
-      [uuidv4(), userId, refreshToken, 'refresh']
+      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, ?)',
+      [uuidv4(), userId, refreshToken, 'refresh', expiresAt]
     )
 
     res.json({
@@ -762,9 +763,10 @@ app.post('/api/auth/login', async (req, res) => {
     )
 
     // Store refresh token
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
     await query(
-      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, NOW() + INTERVAL \'7 days\')',
-      [uuidv4(), user.id, refreshToken, 'refresh']
+      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, ?)',
+      [uuidv4(), user.id, refreshToken, 'refresh', expiresAt]
     )
 
     // Update last login for admin
