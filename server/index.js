@@ -52,7 +52,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_your_stripe_
 // Setup multer for image uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../public/uploads')
+    // Use Railway volume storage if available, fallback to local for development
+    const uploadDir = process.env.RAILWAY_VOLUME_MOUNT_PATH 
+      ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
+      : path.join(__dirname, '../public/uploads')
+    
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true })
     }
@@ -92,7 +96,10 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Serve static files for uploaded images
-app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')))
+const uploadsPath = process.env.RAILWAY_VOLUME_MOUNT_PATH 
+  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
+  : path.join(__dirname, '../public/uploads')
+app.use('/uploads', express.static(uploadsPath))
 
 // Initialize database
 initializeDatabase()

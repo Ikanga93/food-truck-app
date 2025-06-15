@@ -2,9 +2,10 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "npm run start:railway"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+startCommand = "npm run start:railway"
 
 [[services]]
 name = "web"
@@ -24,3 +25,6 @@ STRIPE_SECRET_KEY = "your_stripe_secret_key"
 
 [environments.production]
 variables = {}
+
+[volumes]
+uploads = "/app/uploads"
