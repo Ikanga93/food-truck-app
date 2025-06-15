@@ -897,6 +897,15 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 })
 
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  })
+})
+
 // Serve React app for client-side routing in production
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
@@ -910,8 +919,11 @@ if (process.env.NODE_ENV === 'production') {
 
 // Start server
 const PORT = process.env.PORT || 3002
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT}`)
-  console.log(`📊 Dashboard: http://localhost:${PORT}/api/dashboard`)
-  console.log(`🛒 Orders API: http://localhost:${PORT}/api/orders`)
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost'
+
+server.listen(PORT, HOST, () => {
+  console.log(`🚀 Server running on ${HOST}:${PORT}`)
+  console.log(`📊 Dashboard: http://${HOST}:${PORT}/api/dashboard`)
+  console.log(`🛒 Orders API: http://${HOST}:${PORT}/api/orders`)
+  console.log(`💚 Health Check: http://${HOST}:${PORT}/health`)
 }) 
