@@ -8,22 +8,56 @@ const __dirname = path.dirname(__filename)
 
 // Database configuration
 const isDevelopment = process.env.NODE_ENV !== 'production'
+const hasPostgresUrl = process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgresql://')
 
 let db
 
-if (isDevelopment) {
-  // Development: Use SQLite
-  console.log('🔧 Development mode: Using SQLite database')
-  const dbPath = path.join(__dirname, 'orders.db')
+if (isDevelopment || !hasPostgresUrl) {
+  // Development or Production fallback: Use SQLite
+  console.log(isDevelopment ? '🔧 Development mode: Using SQLite database' : '⚠️  Production fallback: Using SQLite database (DATABASE_URL not configured)')
+  const dbPath = isDevelopment ? path.join(__dirname, 'orders.db') : './orders.db'
   db = new sqlite3.Database(dbPath)
 } else {
   // Production: Use PostgreSQL on Railway
   console.log('🚀 Production mode: Using PostgreSQL database')
+  console.log('🔗 DATABASE_URL:', process.env.DATABASE_URL ? 'Set (hidden for security)' : 'NOT SET')
+  
   const { Pool } = pg
   
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  // Try different connection configurations
+  let poolConfig
+  
+  if (process.env.DATABASE_URL) {
+    poolConfig = {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    }
+  } else {
+    // Fallback to individual environment variables
+    poolConfig = {
+      host: process.env.PGHOST || 'postgres.railway.internal',
+      port: process.env.PGPORT || 5432,
+      database: process.env.PGDATABASE || 'railway',
+      user: process.env.PGUSER || 'postgres',
+      password: process.env.PGPASSWORD,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    }
+  }
+  
+  const pool = new Pool(poolConfig)
+  
+  // Test the connection
+  pool.connect((err, client, release) => {
+    if (err) {
+      console.error('❌ PostgreSQL connection failed:', err.message)
+      console.log('🔄 Falling back to SQLite...')
+      // Fall back to SQLite if PostgreSQL fails
+      const dbPath = './orders.db'
+      db = new sqlite3.Database(dbPath)
+      return
+    }
+    console.log('✅ PostgreSQL connected successfully')
+    release()
   })
   
   db = pool
@@ -32,7 +66,7 @@ if (isDevelopment) {
 // Helper function to run queries
 export const query = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment) {
+    if (isDevelopment || !hasPostgresUrl) {
       // SQLite
       if (sql.includes('INSERT') || sql.includes('UPDATE') || sql.includes('DELETE')) {
         db.run(sql, params, function(err) {
@@ -76,7 +110,7 @@ export const query = (sql, params = []) => {
 // Helper function for single row queries
 export const queryOne = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment) {
+    if (isDevelopment || !hasPostgresUrl) {
       db.get(sql, params, (err, row) => {
         if (err) reject(err)
         else resolve(row)
@@ -92,7 +126,7 @@ export const queryOne = (sql, params = []) => {
 // Helper function for multiple row queries
 export const queryAll = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment) {
+    if (isDevelopment || !hasPostgresUrl) {
       db.all(sql, params, (err, rows) => {
         if (err) reject(err)
         else resolve(rows)
@@ -108,7 +142,7 @@ export const queryAll = (sql, params = []) => {
 // Initialize database tables
 export const initializeDatabase = async () => {
   try {
-    if (isDevelopment) {
+    if (isDevelopment || !hasPostgresUrl) {
       // SQLite table creation (keep existing structure)
       await initializeSQLiteTables()
     } else {

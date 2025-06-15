@@ -12,4 +12,6 @@ source = "."
 
 [services.variables]
 NODE_ENV = "production"
-PORT = "3001" 
+PORT = "3001"
+DATABASE_URL = "${{Postgres.DATABASE_URL}}"
+JWT_SECRET = "your-secure-production-jwt-secret-key-change-this"
