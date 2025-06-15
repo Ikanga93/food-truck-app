@@ -1,11 +1,11 @@
 .menu-page {
   min-height: 100vh;
-  padding-top: 80px;
+  padding-top: 0;
 }
 
 .menu-hero {
   background: linear-gradient(135deg, var(--cream) 0%, #FFF3E0 50%, var(--warm-yellow) 100%);
-  padding: 60px 0;
+  padding: 40px 0;
   position: relative;
 }
 

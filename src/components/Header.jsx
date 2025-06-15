@@ -52,14 +52,6 @@ const Header = ({ onCartOpen }) => {
             </div>
           </Link>
           
-          <button 
-            className="menu-toggle"
-            onClick={toggleMenu}
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-
           <nav className={`nav ${isMenuOpen ? 'nav-open' : ''}`}>
             <Link 
               to="/" 
@@ -191,6 +183,15 @@ const Header = ({ onCartOpen }) => {
               {totalItems > 0 && (
                 <span className="cart-count">{totalItems}</span>
               )}
+            </button>
+
+            {/* Mobile Menu Toggle - moved to the far right */}
+            <button 
+              className="menu-toggle"
+              onClick={toggleMenu}
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>

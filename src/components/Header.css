@@ -68,6 +68,7 @@
   min-width: 44px;
   min-height: 44px;
   z-index: 101;
+  order: 3; /* Ensure it appears after cart button */
 }
 
 .menu-toggle:hover {
@@ -224,6 +225,7 @@
 /* Desktop Authentication (Hidden on Mobile) */
 .desktop-auth {
   display: none;
+  order: 1;
 }
 
 .user-menu-trigger {
@@ -345,6 +347,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3);
+  order: 2; /* Ensure it appears before hamburger menu */
 }
 
 .cart-btn:hover {
