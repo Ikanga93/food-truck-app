@@ -22,6 +22,7 @@ import Dashboard from './pages/Dashboard'
 import OrdersPage from './pages/OrdersPage'
 import OrderTracking from './pages/OrderTracking'
 import OrderConfirmation from './pages/OrderConfirmation'
+import OrderSuccessPage from './pages/OrderSuccessPage'
 import Checkout from './pages/Checkout'
 import NotFound from './pages/NotFound'
 
@@ -134,6 +135,10 @@ const AppContent = () => {
               <Dashboard />
             </AdminProtectedRoute>
           } 
+        />
+        <Route 
+          path="/order-success" 
+          element={<OrderSuccessPage />} 
         />
         <Route 
           path="*" 

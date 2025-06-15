@@ -181,7 +181,7 @@ app.post('/api/orders', async (req, res) => {
     await query(
       `INSERT INTO orders (
         id, customer_name, customer_phone, customer_email, items, 
-        subtotal, tax, total, location_id, estimated_time, time_remaining,
+        subtotal, tax, total_amount, location_id, estimated_time, time_remaining,
         status, user_id
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -197,9 +197,43 @@ app.post('/api/orders', async (req, res) => {
       [orderId, 'pending_payment']
     )
 
+    // Create Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `Fernando's Food Truck Order #${orderId}`,
+              description: `Order for ${customerName}`,
+            },
+            unit_amount: Math.round(total * 100), // Convert to cents
+          },
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/order-success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/`,
+      metadata: {
+        orderId: orderId,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        customerEmail: customerEmail || '',
+      },
+    })
+
+    // Update order with Stripe session ID
+    await query(
+      'UPDATE orders SET stripe_session_id = ? WHERE id = ?',
+      [session.id, orderId]
+    )
+
     res.json({ 
       success: true, 
       orderId,
+      checkoutUrl: session.url,
       message: 'Order created successfully'
     })
 

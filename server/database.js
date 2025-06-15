@@ -181,9 +181,39 @@ export const initializeDatabase = async () => {
       // SQLite table creation (keep existing structure)
       await initializeSQLiteTables()
     }
+    
+    // Run migrations for existing tables
+    await runMigrations()
+    
     console.log('✅ Database tables initialized successfully')
   } catch (error) {
     console.error('❌ Error initializing database:', error)
+  }
+}
+
+// Run database migrations
+const runMigrations = async () => {
+  try {
+    // Migration: Add stripe_session_id to orders table if it doesn't exist
+    if (isPostgreSQL) {
+      await query(`
+        ALTER TABLE orders 
+        ADD COLUMN IF NOT EXISTS stripe_session_id TEXT
+      `)
+    } else {
+      // For SQLite, check if column exists first
+      const tableInfo = await queryAll("PRAGMA table_info(orders)")
+      const hasStripeSessionId = tableInfo.some(col => col.name === 'stripe_session_id')
+      
+      if (!hasStripeSessionId) {
+        await query(`ALTER TABLE orders ADD COLUMN stripe_session_id TEXT`)
+      }
+    }
+    
+    console.log('✅ Database migrations completed')
+  } catch (error) {
+    console.log('ℹ️ Migration note:', error.message)
+    // Don't throw error for migrations - they might fail if column already exists
   }
 }
 
@@ -231,6 +261,7 @@ const initializeSQLiteTables = () => {
         status TEXT NOT NULL DEFAULT 'pending',
         payment_method TEXT,
         payment_status TEXT DEFAULT 'pending',
+        stripe_session_id TEXT,
         order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         estimated_completion DATETIME,
         estimated_time INTEGER,
@@ -287,6 +318,7 @@ const initializePostgreSQLTables = async () => {
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
     payment_method VARCHAR(50),
     payment_status VARCHAR(50) DEFAULT 'pending',
+    stripe_session_id TEXT,
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     estimated_completion TIMESTAMP,
     estimated_time INTEGER,

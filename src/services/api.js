@@ -48,9 +48,14 @@ class ApiService {
   }
 
   // Get all orders (admin)
-  async getAllOrders() {
+  async getOrders() {
     try {
-      const response = await fetch(`${API_URL}/orders`)
+      const token = localStorage.getItem('accessToken')
+      const response = await fetch(`${API_URL}/orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
 
       if (!response.ok) {
         throw new Error('Failed to fetch orders')
@@ -82,10 +87,12 @@ class ApiService {
   // Update order status
   async updateOrderStatus(orderId, status) {
     try {
+      const token = localStorage.getItem('accessToken')
       const response = await fetch(`${API_URL}/orders/${orderId}/status`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ status }),
       })
@@ -128,7 +135,7 @@ class ApiService {
   // Get all menu items
   async getMenuItems() {
     try {
-      const response = await fetch(`${API_URL}/menu-items`)
+      const response = await fetch(`${API_URL}/menu`)
 
       if (!response.ok) {
         throw new Error('Failed to fetch menu items')
@@ -144,10 +151,12 @@ class ApiService {
   // Add new menu item
   async addMenuItem(menuItem) {
     try {
-      const response = await fetch(`${API_URL}/menu-items`, {
+      const token = localStorage.getItem('accessToken')
+      const response = await fetch(`${API_URL}/menu`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(menuItem),
       })
@@ -166,10 +175,12 @@ class ApiService {
   // Update menu item
   async updateMenuItem(itemId, updates) {
     try {
-      const response = await fetch(`${API_URL}/menu-items/${itemId}`, {
-        method: 'PATCH',
+      const token = localStorage.getItem('accessToken')
+      const response = await fetch(`${API_URL}/menu/${itemId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(updates),
       })
@@ -188,8 +199,12 @@ class ApiService {
   // Delete menu item
   async deleteMenuItem(itemId) {
     try {
-      const response = await fetch(`${API_URL}/menu-items/${itemId}`, {
+      const token = localStorage.getItem('accessToken')
+      const response = await fetch(`${API_URL}/menu/${itemId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       if (!response.ok) {
@@ -224,10 +239,12 @@ class ApiService {
   // Add new location
   async addLocation(location) {
     try {
+      const token = localStorage.getItem('accessToken')
       const response = await fetch(`${API_URL}/locations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(location),
       })
@@ -246,10 +263,12 @@ class ApiService {
   // Update location
   async updateLocation(locationId, updates) {
     try {
+      const token = localStorage.getItem('accessToken')
       const response = await fetch(`${API_URL}/locations/${locationId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(updates),
       })
@@ -268,8 +287,12 @@ class ApiService {
   // Delete location
   async deleteLocation(locationId) {
     try {
+      const token = localStorage.getItem('accessToken')
       const response = await fetch(`${API_URL}/locations/${locationId}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       if (!response.ok) {
