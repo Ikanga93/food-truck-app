@@ -952,7 +952,7 @@ const DashboardPage = ({ onLogout }) => {
                     <div className="current-image">
                       <p>Current image:</p>
                       <img 
-                        src={`${API_BASE_URL}${menuForm.image_url}`} 
+                        src={menuForm.image_url.startsWith('data:') ? menuForm.image_url : `${API_BASE_URL}${menuForm.image_url}`} 
                         alt="Current menu item" 
                         className="preview-image"
                       />
