@@ -8,65 +8,69 @@ const __dirname = path.dirname(__filename)
 
 // Database configuration
 const isDevelopment = process.env.NODE_ENV !== 'production'
-const hasPostgresUrl = process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgresql://')
+
+// Railway provides these environment variables automatically when you add PostgreSQL
+const railwayDatabaseUrl = process.env.DATABASE_URL || 
+                          process.env.DATABASE_PRIVATE_URL || 
+                          process.env.DATABASE_PUBLIC_URL ||
+                          process.env.POSTGRES_URL
+
+const hasPostgresUrl = railwayDatabaseUrl && railwayDatabaseUrl.startsWith('postgresql://')
+
+console.log('🔍 Environment check:')
+console.log('NODE_ENV:', process.env.NODE_ENV)
+console.log('isDevelopment:', isDevelopment)
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL)
+console.log('DATABASE_PRIVATE_URL exists:', !!process.env.DATABASE_PRIVATE_URL)
+console.log('DATABASE_PUBLIC_URL exists:', !!process.env.DATABASE_PUBLIC_URL)
+console.log('POSTGRES_URL exists:', !!process.env.POSTGRES_URL)
+console.log('hasPostgresUrl:', hasPostgresUrl)
 
 let db
 
-if (isDevelopment || !hasPostgresUrl) {
-  // Development or Production fallback: Use SQLite
-  console.log(isDevelopment ? '🔧 Development mode: Using SQLite database' : '⚠️  Production fallback: Using SQLite database (DATABASE_URL not configured)')
-  const dbPath = isDevelopment ? path.join(__dirname, 'orders.db') : './orders.db'
+if (isDevelopment) {
+  // Development only: Use SQLite
+  console.log('🔧 Development mode: Using SQLite database')
+  const dbPath = path.join(__dirname, 'orders.db')
   db = new sqlite3.Database(dbPath)
-} else {
+} else if (hasPostgresUrl) {
   // Production: Use PostgreSQL on Railway
   console.log('🚀 Production mode: Using PostgreSQL database')
-  console.log('🔗 DATABASE_URL:', process.env.DATABASE_URL ? 'Set (hidden for security)' : 'NOT SET')
+  console.log('🔗 Database URL found:', railwayDatabaseUrl ? 'Yes (hidden for security)' : 'No')
   
   const { Pool } = pg
   
-  // Try different connection configurations
-  let poolConfig
-  
-  if (process.env.DATABASE_URL) {
-    poolConfig = {
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-    }
-  } else {
-    // Fallback to individual environment variables
-    poolConfig = {
-      host: process.env.PGHOST || 'postgres.railway.internal',
-      port: process.env.PGPORT || 5432,
-      database: process.env.PGDATABASE || 'railway',
-      user: process.env.PGUSER || 'postgres',
-      password: process.env.PGPASSWORD,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-    }
-  }
-  
-  const pool = new Pool(poolConfig)
+  const pool = new Pool({
+    connectionString: railwayDatabaseUrl,
+    ssl: { rejectUnauthorized: false }
+  })
   
   // Test the connection
   pool.connect((err, client, release) => {
     if (err) {
       console.error('❌ PostgreSQL connection failed:', err.message)
-      console.log('🔄 Falling back to SQLite...')
-      // Fall back to SQLite if PostgreSQL fails
-      const dbPath = './orders.db'
-      db = new sqlite3.Database(dbPath)
-      return
+      console.error('❌ This is a critical error in production!')
+      process.exit(1) // Exit if PostgreSQL fails in production
     }
     console.log('✅ PostgreSQL connected successfully')
     release()
   })
   
   db = pool
+} else {
+  // Production fallback - but this should not happen on Railway
+  console.error('❌ CRITICAL: No PostgreSQL database URL found in production!')
+  console.error('❌ Please configure DATABASE_URL in Railway environment variables')
+  console.error('❌ Using SQLite as emergency fallback, but this will lose data on restart!')
+  
+  const dbPath = './orders.db'
+  db = new sqlite3.Database(dbPath)
 }
 
 // Helper function to run queries
 export const query = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment || !hasPostgresUrl) {
+    if (isDevelopment) {
       // SQLite
       if (sql.includes('INSERT') || sql.includes('UPDATE') || sql.includes('DELETE')) {
         db.run(sql, params, function(err) {
@@ -110,7 +114,7 @@ export const query = (sql, params = []) => {
 // Helper function for single row queries
 export const queryOne = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment || !hasPostgresUrl) {
+    if (isDevelopment) {
       db.get(sql, params, (err, row) => {
         if (err) reject(err)
         else resolve(row)
@@ -126,7 +130,7 @@ export const queryOne = (sql, params = []) => {
 // Helper function for multiple row queries
 export const queryAll = (sql, params = []) => {
   return new Promise((resolve, reject) => {
-    if (isDevelopment || !hasPostgresUrl) {
+    if (isDevelopment) {
       db.all(sql, params, (err, rows) => {
         if (err) reject(err)
         else resolve(rows)
@@ -142,7 +146,7 @@ export const queryAll = (sql, params = []) => {
 // Initialize database tables
 export const initializeDatabase = async () => {
   try {
-    if (isDevelopment || !hasPostgresUrl) {
+    if (isDevelopment) {
       // SQLite table creation (keep existing structure)
       await initializeSQLiteTables()
     } else {
@@ -193,12 +197,17 @@ const initializeSQLiteTables = () => {
         customer_phone TEXT NOT NULL,
         customer_email TEXT,
         items TEXT NOT NULL,
+        subtotal REAL,
+        tax REAL,
         total_amount REAL NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
         payment_method TEXT,
         payment_status TEXT DEFAULT 'pending',
         order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         estimated_completion DATETIME,
+        estimated_time INTEGER,
+        time_remaining INTEGER DEFAULT 0,
+        location_id TEXT,
         notes TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )`)
@@ -244,12 +253,17 @@ const initializePostgreSQLTables = async () => {
     customer_phone VARCHAR(255) NOT NULL,
     customer_email VARCHAR(255),
     items TEXT NOT NULL,
+    subtotal DECIMAL(10,2),
+    tax DECIMAL(10,2),
     total_amount DECIMAL(10,2) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
     payment_method VARCHAR(50),
     payment_status VARCHAR(50) DEFAULT 'pending',
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     estimated_completion TIMESTAMP,
+    estimated_time INTEGER,
+    time_remaining INTEGER DEFAULT 0,
+    location_id VARCHAR(255),
     notes TEXT,
     FOREIGN KEY (user_id) REFERENCES users (id)
   )`)

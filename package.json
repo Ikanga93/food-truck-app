@@ -10,7 +10,8 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "start": "node server/index.js",
-    "start:railway": "npm run build && node server/index.js"
+    "start:railway": "npm run build && node server/index.js",
+    "debug:env": "node debug-env.js"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^3.7.0",
