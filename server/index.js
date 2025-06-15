@@ -570,8 +570,8 @@ app.delete('/api/locations/:id', (req, res) => {
 // Timer to update cooking orders
 setInterval(() => {
   query(
-    'SELECT * FROM orders WHERE status = "cooking" AND time_remaining > 0',
-    [],
+    'SELECT * FROM orders WHERE status = ? AND time_remaining > 0',
+    ['cooking'],
     (err, rows) => {
       if (err) return
 
