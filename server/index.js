@@ -72,7 +72,8 @@ app.use(cors({
     ? [process.env.FRONTEND_URL, "https://*.railway.app", "https://*.up.railway.app"]
     : ["http://localhost:5173", "http://localhost:5174"]
 }))
-app.use(express.json())
+// Increased JSON payload limit to handle base64 encoded images (default is 100kb)
+app.use(express.json({ limit: '10mb' }))
 
 // Serve static files from React build in production
 if (process.env.NODE_ENV === 'production') {
