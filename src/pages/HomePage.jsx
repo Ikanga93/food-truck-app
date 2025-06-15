@@ -1,13 +1,11 @@
 import React from 'react'
 import Hero from '../components/Hero'
-import Menu from '../components/Menu'
 import Contact from '../components/Contact'
 
 const HomePage = () => {
   return (
     <>
       <Hero />
-      <Menu />
       
       {/* Why Choose Fernando's Section */}
       <section className="why-choose-us section">
