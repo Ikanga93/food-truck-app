@@ -3,9 +3,8 @@ import { Plus, Minus, ShoppingCart, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useCart } from '../context/CartContext'
 import ApiService from '../services/ApiService'
+import API_BASE_URL from '../config/api.js'
 import './MenuPage.css'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 const MenuPage = () => {
   const { addToCart, updateQuantity, cartItems } = useCart()
@@ -178,7 +177,7 @@ const MenuPage = () => {
                       <div className="menu-item-info">
                         <h4>{item.name}</h4>
                         <p className="menu-description">{item.description}</p>
-                        <div className="menu-price">${item.price.toFixed(2)}</div>
+                        <div className="menu-price">${(parseFloat(item.price) || 0).toFixed(2)}</div>
                       </div>
                     </div>
                     

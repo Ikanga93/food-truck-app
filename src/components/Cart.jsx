@@ -264,7 +264,7 @@ const Cart = ({ isOpen, onClose }) => {
                                   <span className="option-label">{option.groupName}:</span>
                                   <span className="option-value">{option.choiceName}</span>
                                   {option.price > 0 && (
-                                    <span className="option-price">+${option.price.toFixed(2)}</span>
+                                    <span className="option-price">+${(parseFloat(option.price) || 0).toFixed(2)}</span>
                                   )}
                                 </div>
                               ))}
