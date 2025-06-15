@@ -897,13 +897,24 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 })
 
-// Health check endpoint for Railway
+// Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   })
+})
+
+// Database initialization endpoint (for debugging)
+app.get('/api/init-db', async (req, res) => {
+  try {
+    await initializeDatabase()
+    res.json({ success: true, message: 'Database initialized successfully' })
+  } catch (error) {
+    console.error('Database initialization error:', error)
+    res.status(500).json({ error: 'Database initialization failed', details: error.message })
+  }
 })
 
 // Serve React app for client-side routing in production
