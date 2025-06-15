@@ -75,8 +75,16 @@ if (isDevelopment) {
 export const query = (sql, params = []) => {
   return new Promise((resolve, reject) => {
     if (isPostgreSQL) {
+      // Convert ? placeholders to PostgreSQL $1, $2, $3... format
+      let convertedSql = sql
+      let paramIndex = 1
+      while (convertedSql.includes('?')) {
+        convertedSql = convertedSql.replace('?', `$${paramIndex}`)
+        paramIndex++
+      }
+      
       // PostgreSQL
-      db.query(sql, params)
+      db.query(convertedSql, params)
         .then(result => {
           if (sql.includes('INSERT') || sql.includes('UPDATE') || sql.includes('DELETE')) {
             resolve({ 
@@ -119,7 +127,15 @@ export const query = (sql, params = []) => {
 export const queryOne = (sql, params = []) => {
   return new Promise((resolve, reject) => {
     if (isPostgreSQL) {
-      db.query(sql, params)
+      // Convert ? placeholders to PostgreSQL $1, $2, $3... format
+      let convertedSql = sql
+      let paramIndex = 1
+      while (convertedSql.includes('?')) {
+        convertedSql = convertedSql.replace('?', `$${paramIndex}`)
+        paramIndex++
+      }
+      
+      db.query(convertedSql, params)
         .then(result => resolve(result.rows[0]))
         .catch(err => reject(err))
     } else {
@@ -135,7 +151,15 @@ export const queryOne = (sql, params = []) => {
 export const queryAll = (sql, params = []) => {
   return new Promise((resolve, reject) => {
     if (isPostgreSQL) {
-      db.query(sql, params)
+      // Convert ? placeholders to PostgreSQL $1, $2, $3... format
+      let convertedSql = sql
+      let paramIndex = 1
+      while (convertedSql.includes('?')) {
+        convertedSql = convertedSql.replace('?', `$${paramIndex}`)
+        paramIndex++
+      }
+      
+      db.query(convertedSql, params)
         .then(result => resolve(result.rows))
         .catch(err => reject(err))
     } else {
