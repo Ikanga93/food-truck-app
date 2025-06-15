@@ -176,7 +176,7 @@ app.post('/api/orders', async (req, res) => {
         id, customer_name, customer_phone, customer_email, items, 
         subtotal, tax, total, location_id, estimated_time, time_remaining,
         status, user_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         orderId, customerName, customerPhone, customerEmail, JSON.stringify(items),
         subtotal, tax, total, locationId, estimatedTime, timeRemaining,
@@ -186,7 +186,7 @@ app.post('/api/orders', async (req, res) => {
 
     // Add initial status to history
     await query(
-      'INSERT INTO order_status_history (order_id, status) VALUES ($1, $2)',
+      'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
       [orderId, 'pending_payment']
     )
 
@@ -205,7 +205,7 @@ app.post('/api/orders', async (req, res) => {
 // Get all orders (for admin dashboard)
 app.get('/api/orders', async (req, res) => {
   try {
-    const rows = await queryAll('SELECT * FROM orders ORDER BY order_date DESC')
+    const rows = await queryAll('SELECT * FROM orders ORDER by order_date DESC')
     const orders = rows.map(row => ({
       ...row,
       items: JSON.parse(row.items),
@@ -222,7 +222,7 @@ app.get('/api/orders', async (req, res) => {
 app.get('/api/orders/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params
-    const row = await queryOne('SELECT * FROM orders WHERE id = $1', [orderId])
+    const row = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId])
     
     if (!row) {
       return res.status(404).json({ error: 'Order not found' })
@@ -251,7 +251,7 @@ app.get('/api/customers/:customerId/orders', authenticateToken, async (req, res)
     }
 
     const rows = await queryAll(
-      'SELECT * FROM orders WHERE user_id = $1 ORDER BY order_date DESC',
+      'SELECT * FROM orders WHERE user_id = ? ORDER BY order_date DESC',
       [customerId]
     )
     
@@ -278,8 +278,8 @@ app.put('/api/orders/:orderId/status', async (req, res) => {
     }
 
     const updateQuery = timeRemaining !== undefined
-      ? 'UPDATE orders SET status = $1, time_remaining = $2 WHERE id = $3'
-      : 'UPDATE orders SET status = $1 WHERE id = $2'
+      ? 'UPDATE orders SET status = ?, time_remaining = ? WHERE id = ?'
+      : 'UPDATE orders SET status = ? WHERE id = ?'
     
     const params = timeRemaining !== undefined
       ? [status, timeRemaining, orderId]
@@ -293,12 +293,12 @@ app.put('/api/orders/:orderId/status', async (req, res) => {
 
     // Add status change to history
     await query(
-      'INSERT INTO order_status_history (order_id, status) VALUES ($1, $2)',
+      'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
       [orderId, status]
     )
 
     // Get updated order
-    const row = await queryOne('SELECT * FROM orders WHERE id = $1', [orderId])
+    const row = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId])
     if (row) {
       const updatedOrder = {
         ...row,
@@ -329,18 +329,18 @@ app.post('/api/verify-payment', async (req, res) => {
     if (session.payment_status === 'paid') {
       // Update order status to confirmed and payment to completed
       await query(
-        'UPDATE orders SET payment_status = $1, status = $2 WHERE id = $3',
+        'UPDATE orders SET payment_status = ?, status = ? WHERE id = ?',
         ['completed', 'confirmed', orderId]
       )
 
       // Add status change to history
       await query(
-        'INSERT INTO order_status_history (order_id, status) VALUES ($1, $2)',
+        'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
         [orderId, 'confirmed']
       )
 
       // Get updated order and notify admin
-      const row = await queryOne('SELECT * FROM orders WHERE id = $1', [orderId])
+      const row = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId])
       if (row) {
         const updatedOrder = {
           ...row,
@@ -383,7 +383,7 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), (req, res) => 
       
       // Update order payment status
       query(
-        'UPDATE orders SET payment_status = $1, status = $2 WHERE stripe_session_id = $3',
+        'UPDATE orders SET payment_status = ?, status = ? WHERE stripe_session_id = ?',
         ['completed', 'confirmed', session.id]
       )
       
@@ -434,12 +434,12 @@ app.post('/api/menu', async (req, res) => {
     }
 
     const result = await query(
-      'INSERT INTO menu_items (name, description, price, category, emoji, available, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      'INSERT INTO menu_items (name, description, price, category, emoji, available, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [name, description, price, category, emoji, available !== false, image_url]
     )
 
     // Return the created item
-    const row = await queryOne('SELECT * FROM menu_items WHERE id = $1', [result.lastID])
+    const row = await queryOne('SELECT * FROM menu_items WHERE id = ?', [result.lastID])
     res.json(row)
   } catch (error) {
     console.error('Error adding menu item:', error)
@@ -454,7 +454,7 @@ app.put('/api/menu/:id', async (req, res) => {
     const { name, description, price, category, emoji, available, image_url } = req.body
     
     await query(
-      'UPDATE menu_items SET name = $1, description = $2, price = $3, category = $4, emoji = $5, available = $6, image_url = $7, updated_at = CURRENT_TIMESTAMP WHERE id = $8',
+      'UPDATE menu_items SET name = ?, description = ?, price = ?, category = ?, emoji = ?, available = ?, image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [name, description, price, category, emoji, available, image_url, id]
     )
 
@@ -470,7 +470,7 @@ app.delete('/api/menu/:id', async (req, res) => {
   try {
     const { id } = req.params
     
-    const result = await query('DELETE FROM menu_items WHERE id = $1', [id])
+    const result = await query('DELETE FROM menu_items WHERE id = ?', [id])
     
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Menu item not found' })
@@ -506,12 +506,12 @@ app.post('/api/locations', async (req, res) => {
     }
 
     await query(
-      'INSERT INTO locations (id, name, type, description, current_location, schedule, phone, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+      'INSERT INTO locations (id, name, type, description, current_location, schedule, phone, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [id, name, type || 'mobile', description, current_location, schedule, phone, status || 'active']
     )
 
     // Return the created item
-    const createdLocation = await queryOne('SELECT * FROM locations WHERE id = $1', [id])
+    const createdLocation = await queryOne('SELECT * FROM locations WHERE id = ?', [id])
     res.json(createdLocation)
   } catch (error) {
     console.error('Error adding location:', error)
@@ -530,7 +530,7 @@ app.put('/api/locations/:id', async (req, res) => {
     const { name, type, description, current_location, schedule, phone, status } = req.body
     
     const result = await query(
-      'UPDATE locations SET name = $1, type = $2, description = $3, current_location = $4, schedule = $5, phone = $6, status = $7, updated_at = CURRENT_TIMESTAMP WHERE id = $8',
+      'UPDATE locations SET name = ?, type = ?, description = ?, current_location = ?, schedule = ?, phone = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [name, type, description, current_location, schedule, phone, status, id]
     )
 
@@ -550,7 +550,7 @@ app.delete('/api/locations/:id', async (req, res) => {
   try {
     const { id } = req.params
     
-    const result = await query('DELETE FROM locations WHERE id = $1', [id])
+    const result = await query('DELETE FROM locations WHERE id = ?', [id])
     
     if (result.changes === 0) {
       res.status(404).json({ error: 'Location not found' })
@@ -570,7 +570,7 @@ setTimeout(() => {
     try {
       console.log('🔄 Timer running - checking cooking orders...')
       // Simplified query to debug SQL syntax
-      const rows = await queryAll('SELECT * FROM orders WHERE status = $1 AND time_remaining > 0', ['cooking'])
+      const rows = await queryAll('SELECT * FROM orders WHERE status = ? AND time_remaining > 0', ['cooking'])
       console.log(`📊 Found ${rows.length} cooking orders`)
       
       for (const order of rows) {
@@ -578,20 +578,20 @@ setTimeout(() => {
         const newStatus = newTimeRemaining === 0 ? 'ready' : 'cooking'
 
         await query(
-          'UPDATE orders SET time_remaining = $1, status = $2 WHERE id = $3',
+          'UPDATE orders SET time_remaining = ?, status = ? WHERE id = ?',
           [newTimeRemaining, newStatus, order.id]
         )
         
         if (newStatus === 'ready') {
           // Add status change to history
           await query(
-            'INSERT INTO order_status_history (order_id, status) VALUES ($1, $2)',
+            'INSERT INTO order_status_history (order_id, status) VALUES (?, ?)',
             [order.id, 'ready']
           )
         }
 
         // Get updated order and emit to clients
-        const updatedRow = await queryOne('SELECT * FROM orders WHERE id = $1', [order.id])
+        const updatedRow = await queryOne('SELECT * FROM orders WHERE id = ?', [order.id])
         if (updatedRow) {
           const updatedOrder = {
             ...updatedRow,
@@ -658,7 +658,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Check if user already exists
     const existingUser = await queryOne(
-      'SELECT * FROM users WHERE email = $1 OR phone = $2',
+      'SELECT * FROM users WHERE email = ? OR phone = ?',
       [email, phone]
     )
 
@@ -673,15 +673,15 @@ app.post('/api/auth/register', async (req, res) => {
     // Create user
     const userId = `USER-${uuidv4().substring(0, 8).toUpperCase()}`
     await query(
-      'INSERT INTO users (id, email, phone, password_hash, role, first_name, last_name) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      'INSERT INTO users (id, email, phone, password_hash, role, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [userId, email, phone, passwordHash, role, firstName, lastName]
     )
 
     // Create profile based on role
     if (role === 'customer') {
-      await query('INSERT INTO customer_profiles (user_id) VALUES ($1)', [userId])
+      await query('INSERT INTO customer_profiles (user_id) VALUES (?)', [userId])
     } else if (role === 'admin') {
-      await query('INSERT INTO admin_profiles (user_id) VALUES ($1)', [userId])
+      await query('INSERT INTO admin_profiles (user_id) VALUES (?)', [userId])
     }
 
     // Generate tokens
@@ -699,7 +699,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Store refresh token
     await query(
-      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES ($1, $2, $3, $4, NOW() + INTERVAL \'7 days\')',
+      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, NOW() + INTERVAL \'7 days\')',
       [uuidv4(), userId, refreshToken, 'refresh']
     )
 
@@ -734,7 +734,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Find user
     const user = await queryOne(
-      'SELECT * FROM users WHERE email = $1 OR phone = $2',
+      'SELECT * FROM users WHERE email = ? OR phone = ?',
       [email || phone, phone || email]
     )
 
@@ -763,14 +763,14 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Store refresh token
     await query(
-      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES ($1, $2, $3, $4, NOW() + INTERVAL \'7 days\')',
+      'INSERT INTO auth_tokens (id, user_id, token, type, expires_at) VALUES (?, ?, ?, ?, NOW() + INTERVAL \'7 days\')',
       [uuidv4(), user.id, refreshToken, 'refresh']
     )
 
     // Update last login for admin
     if (user.role === 'admin') {
       await query(
-        'UPDATE admin_profiles SET last_login = CURRENT_TIMESTAMP WHERE user_id = $1',
+        'UPDATE admin_profiles SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?',
         [user.id]
       )
     }
@@ -809,7 +809,7 @@ app.post('/api/auth/refresh', async (req, res) => {
 
     // Check if token exists in database
     const token = await queryOne(
-      'SELECT * FROM auth_tokens WHERE token = $1 AND type = $2 AND expires_at > CURRENT_TIMESTAMP',
+      'SELECT * FROM auth_tokens WHERE token = ? AND type = ? AND expires_at > CURRENT_TIMESTAMP',
       [refreshToken, 'refresh']
     )
 
@@ -819,7 +819,7 @@ app.post('/api/auth/refresh', async (req, res) => {
 
     // Get user
     const user = await queryOne(
-      'SELECT * FROM users WHERE id = $1',
+      'SELECT * FROM users WHERE id = ?',
       [decoded.id]
     )
 
@@ -859,7 +859,7 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
     if (refreshToken) {
       // Remove refresh token from database
       await query(
-        'DELETE FROM auth_tokens WHERE token = $1 AND user_id = $2',
+        'DELETE FROM auth_tokens WHERE token = ? AND user_id = ?',
         [refreshToken, req.user.id]
       )
     }
@@ -875,7 +875,7 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const user = await queryOne(
-      'SELECT * FROM users WHERE id = $1',
+      'SELECT * FROM users WHERE id = ?',
       [req.user.id]
     )
 
