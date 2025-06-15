@@ -49,24 +49,8 @@ const io = new Server(server, {
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_your_stripe_secret_key')
 
-// Setup multer for image uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    // Use Railway volume storage if available, fallback to local for development
-    const uploadDir = process.env.RAILWAY_VOLUME_MOUNT_PATH 
-      ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
-      : path.join(__dirname, '../public/uploads')
-    
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
-    cb(null, uploadDir)
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, 'menu-' + uniqueSuffix + path.extname(file.originalname))
-  }
-})
+// Setup multer for image uploads - store in memory for database storage
+const storage = multer.memoryStorage()
 
 const upload = multer({ 
   storage: storage,
@@ -94,12 +78,6 @@ app.use(express.json())
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')))
 }
-
-// Serve static files for uploaded images
-const uploadsPath = process.env.RAILWAY_VOLUME_MOUNT_PATH 
-  ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
-  : path.join(__dirname, '../public/uploads')
-app.use('/uploads', express.static(uploadsPath))
 
 // Initialize database
 initializeDatabase()
@@ -446,7 +424,11 @@ app.post('/api/upload-menu-image', upload.single('image'), (req, res) => {
       return res.status(400).json({ error: 'No image file provided' })
     }
     
-    const imageUrl = `/uploads/${req.file.filename}`
+    // Convert image to base64 data URL
+    const base64Image = req.file.buffer.toString('base64')
+    const mimeType = req.file.mimetype
+    const imageUrl = `data:${mimeType};base64,${base64Image}`
+    
     res.json({ imageUrl })
   } catch (error) {
     console.error('Error uploading image:', error)
