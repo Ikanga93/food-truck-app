@@ -203,7 +203,7 @@ app.post('/api/orders', async (req, res) => {
 })
 
 // Get all orders (for admin dashboard)
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const rows = await queryAll('SELECT * FROM orders ORDER by order_date DESC')
     const orders = rows.map(row => ({
@@ -268,7 +268,7 @@ app.get('/api/customers/:customerId/orders', authenticateToken, async (req, res)
 })
 
 // Update order status
-app.put('/api/orders/:orderId/status', async (req, res) => {
+app.put('/api/orders/:orderId/status', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const { orderId } = req.params
     const { status, timeRemaining } = req.body
@@ -425,7 +425,7 @@ app.get('/api/menu', async (req, res) => {
 })
 
 // Add new menu item
-app.post('/api/menu', async (req, res) => {
+app.post('/api/menu', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const { name, description, price, category, emoji, available, image_url } = req.body
 
@@ -448,7 +448,7 @@ app.post('/api/menu', async (req, res) => {
 })
 
 // Update menu item
-app.put('/api/menu/:id', async (req, res) => {
+app.put('/api/menu/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params
     const { name, description, price, category, emoji, available, image_url } = req.body
@@ -466,7 +466,7 @@ app.put('/api/menu/:id', async (req, res) => {
 })
 
 // Delete menu item
-app.delete('/api/menu/:id', async (req, res) => {
+app.delete('/api/menu/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params
     
@@ -497,7 +497,7 @@ app.get('/api/locations', async (req, res) => {
 })
 
 // Add new location
-app.post('/api/locations', async (req, res) => {
+app.post('/api/locations', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const { id, name, type, description, current_location, schedule, phone, status } = req.body
     
@@ -524,7 +524,7 @@ app.post('/api/locations', async (req, res) => {
 })
 
 // Update location
-app.put('/api/locations/:id', async (req, res) => {
+app.put('/api/locations/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params
     const { name, type, description, current_location, schedule, phone, status } = req.body
@@ -546,7 +546,7 @@ app.put('/api/locations/:id', async (req, res) => {
 })
 
 // Delete location
-app.delete('/api/locations/:id', async (req, res) => {
+app.delete('/api/locations/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const { id } = req.params
     
@@ -610,7 +610,7 @@ setTimeout(() => {
 }, 5000) // Wait 5 seconds after server start
 
 // Dashboard API Route
-app.get('/api/dashboard', async (req, res) => {
+app.get('/api/dashboard', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     // Get counts and statistics from database
     const orderCount = await queryOne('SELECT COUNT(*) as total_orders FROM orders')
