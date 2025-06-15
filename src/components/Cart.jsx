@@ -105,7 +105,11 @@ const Cart = ({ isOpen, onClose }) => {
     }
   }
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  const subtotal = cartItems.reduce((sum, item) => {
+    const itemPrice = parseFloat(item.price) || 0;
+    const quantity = parseInt(item.quantity) || 0;
+    return sum + (itemPrice * quantity);
+  }, 0)
   const tax = subtotal * 0.0875 // 8.75% tax
   const total = subtotal + tax
 
@@ -214,7 +218,7 @@ const Cart = ({ isOpen, onClose }) => {
               <div className="cart-items">
                 {cartItems.map(item => {
                   // Calculate item price including any option surcharges
-                  let itemBasePrice = item.price;
+                  let itemBasePrice = parseFloat(item.price) || 0;
                   let optionsSurcharge = 0;
                   let selectedOptionDetails = [];
                   
@@ -231,13 +235,13 @@ const Cart = ({ isOpen, onClose }) => {
                           const selectedChoice = optionGroup.choices.find(c => c.id === choiceId);
                           if (selectedChoice) {
                             // Add option price to surcharge
-                            optionsSurcharge += selectedChoice.price || 0;
+                            optionsSurcharge += parseFloat(selectedChoice.price) || 0;
                             
                             // Add to details for display
                             selectedOptionDetails.push({
                               groupName: optionGroup.name,
                               choiceName: selectedChoice.name,
-                              price: selectedChoice.price || 0
+                              price: parseFloat(selectedChoice.price) || 0
                             });
                           }
                         });
