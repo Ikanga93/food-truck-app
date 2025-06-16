@@ -201,12 +201,23 @@ const runMigrations = async () => {
         ADD COLUMN IF NOT EXISTS stripe_session_id TEXT
       `)
     } else {
-      // For SQLite, check if column exists first
+      // For SQLite, check if columns exist first
       const tableInfo = await queryAll("PRAGMA table_info(orders)")
       const hasStripeSessionId = tableInfo.some(col => col.name === 'stripe_session_id')
+      const hasOrderDate = tableInfo.some(col => col.name === 'order_date')
       
       if (!hasStripeSessionId) {
         await query(`ALTER TABLE orders ADD COLUMN stripe_session_id TEXT`)
+        console.log('✅ Added stripe_session_id column to orders table')
+      }
+      
+      if (!hasOrderDate) {
+        await query(`ALTER TABLE orders ADD COLUMN order_date DATETIME DEFAULT CURRENT_TIMESTAMP`)
+        console.log('✅ Added order_date column to orders table')
+        
+        // Update existing orders that don't have order_date set
+        await query(`UPDATE orders SET order_date = CURRENT_TIMESTAMP WHERE order_date IS NULL`)
+        console.log('✅ Updated existing orders with order_date')
       }
     }
     
