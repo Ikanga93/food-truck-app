@@ -34,7 +34,29 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     if (isLoaded) {
       console.log('Saving cart to localStorage:', cartItems)
-      localStorage.setItem('cart', JSON.stringify(cartItems))
+      try {
+        // Filter out large image data to prevent localStorage quota issues
+        const cartItemsForStorage = cartItems.map(item => {
+          const { image_url, ...itemWithoutImage } = item;
+          return itemWithoutImage;
+        });
+        localStorage.setItem('cart', JSON.stringify(cartItemsForStorage))
+      } catch (error) {
+        console.error('Error saving cart to localStorage:', error)
+        // If localStorage is full, try to clear it and save again
+        if (error.name === 'QuotaExceededError') {
+          try {
+            localStorage.removeItem('cart')
+            const cartItemsForStorage = cartItems.map(item => {
+              const { image_url, ...itemWithoutImage } = item;
+              return itemWithoutImage;
+            });
+            localStorage.setItem('cart', JSON.stringify(cartItemsForStorage))
+          } catch (secondError) {
+            console.error('Failed to save cart even after clearing localStorage:', secondError)
+          }
+        }
+      }
     }
   }, [cartItems, isLoaded])
 

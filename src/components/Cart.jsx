@@ -255,10 +255,21 @@ const Cart = ({ isOpen, onClose }) => {
                   return (
                     <div key={`${item.id}-${JSON.stringify(item.selectedOptions || {})}`} className="cart-item">
                       <div className="cart-item-info">
-                        <div className="cart-item-emoji">{item.emoji}</div>
+                        <div className="cart-item-image">
+                          {item.image_url ? (
+                            <img 
+                              src={item.image_url.startsWith('data:') ? item.image_url : `${process.env.REACT_APP_API_URL || 'http://localhost:3002'}${item.image_url}`} 
+                              alt={item.name}
+                              className="cart-image"
+                            />
+                          ) : (
+                            <div className="cart-item-emoji">{item.emoji}</div>
+                          )}
+                        </div>
                         <div className="cart-item-details">
                           <h4>{item.name}</h4>
-                          <p>${totalItemPrice.toFixed(2)} each</p>
+                          <p className="cart-item-description">{item.description}</p>
+                          <p className="cart-item-price">${totalItemPrice.toFixed(2)} each</p>
                           
                           {/* Display selected options */}
                           {selectedOptionDetails.length > 0 && (
