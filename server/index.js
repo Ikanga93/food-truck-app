@@ -1097,21 +1097,41 @@ app.get('/api/debug-db', async (req, res) => {
 
 // Serve React app for client-side routing in production
 if (process.env.NODE_ENV === 'production') {
-  // Serve static files first
-  app.use(express.static(path.join(__dirname, '../dist')))
+  // Serve static files first with proper headers
+  app.use(express.static(path.join(__dirname, '../dist'), {
+    maxAge: '1d', // Cache static assets for 1 day
+    setHeaders: (res, path) => {
+      // Don't cache HTML files to ensure fresh content
+      if (path.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    }
+  }))
   
   // Handle all non-API routes by serving the React app
   app.get('*', (req, res) => {
     // Don't serve React app for API routes
-    if (req.path.startsWith('/api')) {
+    if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
       return res.status(404).json({ error: 'API endpoint not found' })
     }
     
     // Log the route being accessed for debugging
-    console.log(`Serving React app for route: ${req.path}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`)
+    console.log(`🔄 Serving React app for route: ${req.path}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`)
+    
+    // Set proper headers for HTML
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     
     // Always serve the React app index.html for client-side routing
-    res.sendFile(path.join(__dirname, '../dist/index.html'))
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    
+    // Check if index.html exists before serving
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error('❌ index.html not found at:', indexPath);
+      res.status(500).send('Server configuration error: index.html not found');
+    }
   })
 }
 
