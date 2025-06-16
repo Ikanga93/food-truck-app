@@ -1004,12 +1004,53 @@ app.get('/health', (req, res) => {
 
 // Route debugging endpoint
 app.get('/api/debug-routes', (req, res) => {
+  const path = require('path')
+  const fs = require('fs')
+  
+  // Check if dist directory exists and has files
+  const distPath = path.join(__dirname, '../dist')
+  const indexPath = path.join(distPath, 'index.html')
+  
+  let distExists = false
+  let indexExists = false
+  let indexContent = null
+  
+  try {
+    distExists = fs.existsSync(distPath)
+    indexExists = fs.existsSync(indexPath)
+    if (indexExists) {
+      indexContent = fs.readFileSync(indexPath, 'utf8').substring(0, 200) + '...'
+    }
+  } catch (error) {
+    console.error('Error checking dist files:', error)
+  }
+  
   res.json({
     environment: process.env.NODE_ENV,
+    server: {
+      host: req.get('host'),
+      protocol: req.protocol,
+      url: `${req.protocol}://${req.get('host')}`
+    },
+    paths: {
+      __dirname: __dirname,
+      distPath: distPath,
+      indexPath: indexPath
+    },
+    files: {
+      distExists,
+      indexExists,
+      indexContent
+    },
     routes: {
       'order-success': '/order-success',
       'api-routes': ['/api/orders', '/api/verify-payment'],
       'static-files': process.env.NODE_ENV === 'production' ? 'Served from /dist' : 'Development mode'
+    },
+    stripe: {
+      successUrlPattern: process.env.NODE_ENV === 'production' ? 
+        `https://${req.get('host')}/order-success?session_id={CHECKOUT_SESSION_ID}&order_id=ORDER_ID` :
+        'http://localhost:5173/order-success?session_id={CHECKOUT_SESSION_ID}&order_id=ORDER_ID'
     },
     message: 'Route debugging info'
   })
