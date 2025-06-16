@@ -43,21 +43,11 @@
 }
 
 .menu-page-title {
-  font-size: 3.5rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--dark-brown);
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.menu-page-subtitle {
-  font-size: 1.3rem;
-  color: var(--text-light);
-  text-align: center;
-  margin-bottom: 40px;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+  text-align: left;
+  margin-bottom: 10px;
 }
 
 .search-bar {
@@ -142,7 +132,7 @@
 .menu-items-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
+  gap: 0.25rem;
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
@@ -417,7 +407,7 @@
   
   .menu-items-grid {
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
+    gap: 0.1rem;
   }
   
   .menu-item {
@@ -450,6 +440,11 @@
     width: 30px;
     height: 30px;
   }
+
+  .menu-page-title {
+    font-size: 1.67rem;
+    margin-bottom: 1rem;
+  }
 }
 
 /* Mobile Tablet Responsive Design (481px - 768px) */
@@ -459,12 +454,8 @@
   }
 
   .menu-page-title {
-    font-size: 2.5rem;
+    font-size: 1.33rem;
     margin-bottom: 1rem;
-  }
-
-  .menu-page-subtitle {
-    font-size: 1.1rem;
   }
 
   .menu-categories {
@@ -479,7 +470,7 @@
 
   .menu-items-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 1.25rem;
+    gap: 0.1rem;
     padding: 0 0.5rem;
   }
 
@@ -536,13 +527,8 @@
   }
 
   .menu-page-title {
-    font-size: 2rem;
+    font-size: 1.33rem;
     margin-bottom: 1rem;
-  }
-
-  .menu-page-subtitle {
-    font-size: 1rem;
-    margin-bottom: 1.5rem;
   }
 
   .search-input {
@@ -567,7 +553,7 @@
 
   .menu-items-grid {
     grid-template-columns: 1fr;
-    gap: 1.25rem;
+    gap: 0.1rem;
     padding: 0;
   }
 
@@ -629,5 +615,10 @@
   .category-btn {
     padding: 12px 24px;
     font-size: 1rem;
+  }
+
+  .menu-page-title {
+    font-size: 1rem;
+    margin-bottom: 10px;
   }
 }

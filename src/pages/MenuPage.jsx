@@ -94,9 +94,8 @@ const MenuPage = () => {
           <div className="container">
             <Link to="/" className="back-link">
               <ArrowLeft size={20} />
-              Back to Home
             </Link>
-            <h1 className="menu-page-title">Fernando's Menu</h1>
+            <h1 className="menu-page-title">Menu</h1>
             <div className="loading-state">
               <div className="spinner"></div>
               <p>Loading menu...</p>
@@ -113,12 +112,8 @@ const MenuPage = () => {
         <div className="container">
           <Link to="/" className="back-link">
             <ArrowLeft size={20} />
-            Back to Home
           </Link>
-          <h1 className="menu-page-title">Fernando's Menu</h1>
-          <p className="menu-page-subtitle">
-            Authentic Mexican flavors made fresh daily with traditional family recipes
-          </p>
+          <h1 className="menu-page-title">Menu</h1>
           
           <div className="search-bar">
             <input
