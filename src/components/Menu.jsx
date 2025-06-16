@@ -287,40 +287,39 @@ const Menu = () => {
                       <div className="menu-item-info">
                         <h4>{item.name}</h4>
                         <p className="menu-description">{item.description}</p>
-                        <div className="menu-price">${(parseFloat(item.price) || 0).toFixed(2)}</div>
                       </div>
                     </div>
                     
                     <div className="menu-item-actions">
-                      <div className="action-buttons">
-                        {item.options && item.options.length > 0 && (
-                          <button 
-                            className="options-toggle-btn"
-                            onClick={() => toggleItemOptions(item.id)}
-                          >
-                            {expandedItems[item.id] ? (
-                              <>
-                                <ChevronUp size={16} />
-                                Hide
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown size={16} />
-                                Options
-                              </>
-                            )}
-                          </button>
-                        )}
-                        
+                      <div className="price-and-add-row">
+                        <div className="menu-price">${(parseFloat(item.price) || 0).toFixed(2)}</div>
                         <button 
                           className="add-to-cart-btn"
                           onClick={() => handleAddToCart(item)}
                           disabled={!canAddToCart(item)}
                         >
-                          <ShoppingCart size={16} />
-                          Add to Cart
+                          <Plus size={18} />
                         </button>
                       </div>
+                      
+                      {item.options && item.options.length > 0 && (
+                        <button 
+                          className="options-toggle-btn"
+                          onClick={() => toggleItemOptions(item.id)}
+                        >
+                          {expandedItems[item.id] ? (
+                            <>
+                              <ChevronUp size={16} />
+                              Hide
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown size={16} />
+                              Options
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                     
                     {/* Options section */}

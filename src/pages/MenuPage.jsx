@@ -177,14 +177,14 @@ const MenuPage = () => {
                       <div className="menu-item-info">
                         <h4>{item.name}</h4>
                         <p className="menu-description">{item.description}</p>
-                        <div className="menu-price">${(parseFloat(item.price) || 0).toFixed(2)}</div>
                       </div>
                     </div>
                     
                     <div className="menu-item-actions">
-                      <div className="action-buttons">
-                        {getItemQuantity(item.id) > 0 ? (
-                          <div className="quantity-controls">
+                      {getItemQuantity(item.id) > 0 ? (
+                        <div className="quantity-controls">
+                          <div className="menu-price">${(parseFloat(item.price) || 0).toFixed(2)}</div>
+                          <div className="quantity-buttons">
                             <button 
                               className="quantity-btn"
                               onClick={() => handleQuantityChange(item, -1)}
@@ -199,16 +199,18 @@ const MenuPage = () => {
                               <Plus size={16} />
                             </button>
                           </div>
-                        ) : (
+                        </div>
+                      ) : (
+                        <div className="price-and-add-row">
+                          <div className="menu-price">${(parseFloat(item.price) || 0).toFixed(2)}</div>
                           <button 
                             className="add-to-cart-btn"
                             onClick={() => handleAddToCart(item)}
                           >
-                            <ShoppingCart size={16} />
-                            Add to Cart
+                            <Plus size={18} />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
