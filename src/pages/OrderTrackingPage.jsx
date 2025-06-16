@@ -75,11 +75,15 @@ const OrderTrackingPage = () => {
 
   // Helper function to get current time in Central Time
   const getCurrentCentralTime = () => {
-    return new Date(new Date().toLocaleString("en-US", {timeZone: "America/Chicago"}))
+    const now = new Date()
+    // Convert UTC to Central Time (CST/CDT)
+    const centralTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Chicago"}))
+    return centralTime
   }
 
   const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString([], { 
+    const date = new Date(dateString)
+    return date.toLocaleTimeString([], { 
       hour: '2-digit', 
       minute: '2-digit',
       timeZone: 'America/Chicago'
@@ -90,10 +94,10 @@ const OrderTrackingPage = () => {
     if (!order) return null
     
     const estimatedTime = order.estimated_time || 20 // Default to 20 minutes
-    const orderTime = new Date(order.orderTime || order.order_time)
-    const currentCentralTime = currentTime
+    const orderTime = new Date(order.order_date || order.orderTime || order.order_time)
+    const now = new Date()
     const estimatedReady = new Date(orderTime.getTime() + estimatedTime * 60000)
-    const remaining = Math.max(0, Math.floor((estimatedReady.getTime() - currentCentralTime.getTime()) / 1000))
+    const remaining = Math.max(0, Math.floor((estimatedReady.getTime() - now.getTime()) / 1000))
     
     if (remaining <= 0) return 'Ready now!'
     
@@ -107,9 +111,9 @@ const OrderTrackingPage = () => {
     if (!order) return 0
     
     const estimatedTime = order.estimated_time || 20 // Default to 20 minutes
-    const orderTime = new Date(order.orderTime || order.order_time)
-    const currentCentralTime = currentTime
-    const elapsed = (currentCentralTime.getTime() - orderTime.getTime()) / 1000 / 60 // elapsed time in minutes
+    const orderTime = new Date(order.order_date || order.orderTime || order.order_time)
+    const now = new Date()
+    const elapsed = Math.max(0, (now.getTime() - orderTime.getTime()) / 1000 / 60) // elapsed time in minutes
     const progress = Math.min(100, Math.max(0, (elapsed / estimatedTime) * 100))
     
     return Math.round(progress)
@@ -118,9 +122,9 @@ const OrderTrackingPage = () => {
   const getElapsedTime = (order) => {
     if (!order) return null
     
-    const orderTime = new Date(order.orderTime || order.order_time)
-    const currentCentralTime = currentTime
-    const elapsed = Math.floor((currentCentralTime.getTime() - orderTime.getTime()) / 1000 / 60) // in minutes
+    const orderTime = new Date(order.order_date || order.orderTime || order.order_time)
+    const now = new Date()
+    const elapsed = Math.max(0, Math.floor((now.getTime() - orderTime.getTime()) / 1000 / 60)) // in minutes
     
     if (elapsed < 60) {
       return `${elapsed} minutes ago`
@@ -132,16 +136,22 @@ const OrderTrackingPage = () => {
   }
 
   const formatPrice = (price) => {
-    return `$${parseFloat(price).toFixed(2)}`
+    const numPrice = parseFloat(price || 0)
+    return isNaN(numPrice) ? '$0.00' : `$${numPrice.toFixed(2)}`
   }
 
-  // Timer effect for live updates using Central Time
+  // Timer effect for live updates
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(getCurrentCentralTime())
+      setCurrentTime(new Date())
     }, 1000)
 
     return () => clearInterval(timer)
+  }, [])
+
+  // Initialize current time
+  useEffect(() => {
+    setCurrentTime(new Date())
   }, [])
 
   if (isLoading) {
@@ -269,59 +279,30 @@ const OrderTrackingPage = () => {
           )}
         </div>
 
-        {/* Order Summary */}
-        <div className="order-summary-card">
-          <h3>Order Summary</h3>
-          <div className="order-items">
-            {(typeof order.items === 'string' ? JSON.parse(order.items) : order.items).map((item, index) => (
-              <div key={index} className="order-item">
-                <div className="item-details">
-                  <span className="item-name">{item.name}</span>
-                  <span className="item-quantity">Qty: {item.quantity || 1}</span>
-                </div>
-                <span className="item-price">{formatPrice(item.price)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="order-total">
-            <div className="total-row">
-              <span className="total-label">Total</span>
-              <span className="total-amount">{formatPrice(order.total)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Pickup Information */}
+        {/* Restaurant Location */}
         <div className="pickup-info-card">
           <div className="pickup-header">
             <MapPin size={20} />
-            <h3>Pickup Location</h3>
+            <h3>Restaurant Location</h3>
           </div>
           <div className="pickup-details">
-            <p className="location-name">Fernando's Food Truck</p>
-            <p className="location-address">Check our social media for current location</p>
+            <p className="location-name">
+              {order.location?.name || "Fernando's Food Truck"}
+            </p>
+            {order.location?.current_location ? (
+              <p className="location-address">{order.location.current_location}</p>
+            ) : (
+              <p className="location-address">Check our social media for current location</p>
+            )}
+            {order.location?.phone && (
+              <p className="location-phone">📞 {order.location.phone}</p>
+            )}
+            {order.location?.schedule && (
+              <p className="location-schedule">🕒 {order.location.schedule}</p>
+            )}
             <p className="pickup-instructions">
               Please have your order number ready when you arrive
             </p>
-          </div>
-        </div>
-
-        {/* Customer Info */}
-        <div className="customer-info-card">
-          <h3>Order Details</h3>
-          <div className="customer-details">
-            <div className="detail-row">
-              <span className="detail-label">Customer:</span>
-              <span className="detail-value">{order.customer_name}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Phone:</span>
-              <span className="detail-value">{order.customer_phone}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Order Time:</span>
-              <span className="detail-value">{formatTime(order.orderTime || order.order_time)}</span>
-            </div>
           </div>
         </div>
       </div>

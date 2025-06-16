@@ -242,7 +242,19 @@ app.get('/api/orders', authenticateToken, authorizeRole(['admin']), async (req, 
 app.get('/api/orders/:orderId', async (req, res) => {
   try {
     const { orderId } = req.params
-    const row = await queryOne('SELECT * FROM orders WHERE id = ?', [orderId])
+    
+    // Join with locations table to get location details
+    const row = await queryOne(`
+      SELECT o.*, 
+             l.name as location_name, 
+             l.current_location, 
+             l.phone as location_phone,
+             l.description as location_description,
+             l.schedule as location_schedule
+      FROM orders o 
+      LEFT JOIN locations l ON o.location_id = l.id 
+      WHERE o.id = ?
+    `, [orderId])
     
     if (!row) {
       return res.status(404).json({ error: 'Order not found' })
@@ -251,7 +263,14 @@ app.get('/api/orders/:orderId', async (req, res) => {
     const order = {
       ...row,
       items: JSON.parse(row.items),
-      orderTime: new Date(row.order_date)
+      orderTime: new Date(row.order_date),
+      location: row.location_name ? {
+        name: row.location_name,
+        current_location: row.current_location,
+        phone: row.location_phone,
+        description: row.location_description,
+        schedule: row.location_schedule
+      } : null
     }
     res.json(order)
   } catch (error) {

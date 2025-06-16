@@ -320,9 +320,20 @@
 }
 
 .location-address {
-  color: #666;
-  margin: 0 0 12px 0;
+  color: var(--text-light);
+  margin: 8px 0;
   font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.location-phone,
+.location-schedule {
+  color: var(--text-light);
+  margin: 6px 0;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .pickup-instructions {
@@ -445,6 +456,10 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .order-tracking-page {
+    padding: 80px 10px 20px 10px;
+  }
+
   .container {
     padding: 0 15px;
   }
@@ -457,6 +472,16 @@
     flex-direction: column;
     gap: 10px;
   }
+
+  .order-id, .order-time {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+  }
+
+  .payment-success-banner {
+    padding: 12px 15px;
+    font-size: 0.9rem;
+  }
   
   .status-card {
     padding: 20px;
@@ -467,9 +492,18 @@
     text-align: center;
     gap: 15px;
   }
+
+  .status-icon {
+    width: 50px;
+    height: 50px;
+  }
   
   .status-content h2 {
     font-size: 1.5rem;
+  }
+
+  .status-subtitle {
+    font-size: 0.9rem;
   }
   
   .timer-display {
@@ -482,6 +516,10 @@
     font-size: 2rem;
     padding: 12px 20px;
   }
+
+  .timer-label {
+    font-size: 0.8rem;
+  }
   
   .progress-percentage {
     font-size: 1.2rem;
@@ -493,15 +531,112 @@
   .customer-info-card {
     padding: 20px;
   }
+
+  .order-summary-card h3,
+  .pickup-info-card h3,
+  .customer-info-card h3 {
+    font-size: 1.2rem;
+  }
+
+  .order-item {
+    padding: 10px 0;
+  }
+
+  .item-name {
+    font-size: 0.9rem;
+  }
+
+  .item-quantity {
+    font-size: 0.8rem;
+  }
+
+  .item-price {
+    font-size: 0.9rem;
+  }
+
+  .total-amount {
+    font-size: 1.1rem;
+  }
   
   .pickup-details {
     margin-left: 0;
     margin-top: 15px;
+  }
+
+  .pickup-header {
+    justify-content: center;
+  }
+
+  .location-name {
+    font-size: 1rem;
+  }
+
+  .location-address,
+  .pickup-instructions {
+    font-size: 0.85rem;
   }
   
   .detail-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
+    padding: 10px 0;
+  }
+
+  .detail-label,
+  .detail-value {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .order-tracking-page {
+    padding: 70px 5px 15px 5px;
+  }
+
+  .container {
+    padding: 0 10px;
+  }
+
+  .tracking-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .status-card,
+  .order-summary-card,
+  .pickup-info-card,
+  .customer-info-card {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .status-icon {
+    width: 45px;
+    height: 45px;
+  }
+
+  .status-content h2 {
+    font-size: 1.3rem;
+  }
+
+  .timer-value {
+    font-size: 1.8rem;
+    padding: 10px 15px;
+  }
+
+  .progress-percentage {
+    font-size: 1.1rem;
+    padding: 6px 12px;
+  }
+
+  .order-summary-card h3,
+  .pickup-info-card h3,
+  .customer-info-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+  }
+
+  .progress-bar {
+    height: 10px;
   }
 }

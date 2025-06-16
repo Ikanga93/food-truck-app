@@ -33,9 +33,6 @@ const Hero = () => {
               <Link to="/menu" className="btn btn-primary btn-large">
                 Place Order
               </Link>
-              <Link to="/location" className="btn btn-outline">
-                Find Us
-              </Link>
             </div>
           </div>
 

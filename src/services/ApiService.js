@@ -182,6 +182,17 @@ class ApiService {
     if (!response.ok) throw new Error('Failed to create payment intent')
     return this.parseResponse(response)
   }
+
+  // Verify payment
+  static async verifyPayment(sessionId, orderId) {
+    const response = await fetch(`${this.BASE_URL}/verify-payment`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ sessionId, orderId })
+    })
+    if (!response.ok) throw new Error('Failed to verify payment')
+    return this.parseResponse(response)
+  }
 }
 
 export default ApiService 

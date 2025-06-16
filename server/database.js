@@ -200,11 +200,17 @@ const runMigrations = async () => {
         ALTER TABLE orders 
         ADD COLUMN IF NOT EXISTS stripe_session_id TEXT
       `)
+      await query(`
+        ALTER TABLE orders 
+        ADD COLUMN IF NOT EXISTS total_amount DECIMAL(10,2)
+      `)
     } else {
       // For SQLite, check if columns exist first
       const tableInfo = await queryAll("PRAGMA table_info(orders)")
       const hasStripeSessionId = tableInfo.some(col => col.name === 'stripe_session_id')
       const hasOrderDate = tableInfo.some(col => col.name === 'order_date')
+      const hasTotalAmount = tableInfo.some(col => col.name === 'total_amount')
+      const hasOldTotal = tableInfo.some(col => col.name === 'total')
       
       if (!hasStripeSessionId) {
         await query(`ALTER TABLE orders ADD COLUMN stripe_session_id TEXT`)
@@ -218,6 +224,64 @@ const runMigrations = async () => {
         // Update existing orders that don't have order_date set
         await query(`UPDATE orders SET order_date = CURRENT_TIMESTAMP WHERE order_date IS NULL`)
         console.log('✅ Updated existing orders with order_date')
+      }
+      
+      if (!hasTotalAmount) {
+        await query(`ALTER TABLE orders ADD COLUMN total_amount REAL`)
+        console.log('✅ Added total_amount column to orders table')
+        
+        // Update existing orders that don't have total_amount set
+        await query(`UPDATE orders SET total_amount = COALESCE(subtotal + tax, subtotal, 0) WHERE total_amount IS NULL`)
+        console.log('✅ Updated existing orders with total_amount')
+      }
+      
+      // Migration: Clean up duplicate total/total_amount columns
+      if (hasOldTotal && hasTotalAmount) {
+        // Copy data from old total column to total_amount if total_amount is null
+        await query(`UPDATE orders SET total_amount = total WHERE total_amount IS NULL`)
+        console.log('✅ Migrated data from total to total_amount column')
+        
+        // Since SQLite doesn't support DROP COLUMN directly, we need to recreate the table
+        await query(`
+          CREATE TABLE orders_new (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            customer_name TEXT NOT NULL,
+            customer_phone TEXT NOT NULL,
+            customer_email TEXT,
+            items TEXT NOT NULL,
+            subtotal REAL,
+            tax REAL,
+            total_amount REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            payment_method TEXT,
+            payment_status TEXT DEFAULT 'pending',
+            stripe_session_id TEXT,
+            order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            estimated_completion DATETIME,
+            estimated_time INTEGER,
+            time_remaining INTEGER DEFAULT 0,
+            location_id TEXT,
+            notes TEXT,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+          )
+        `)
+        
+        // Copy data to new table
+        await query(`
+          INSERT INTO orders_new 
+          SELECT 
+            id, user_id, customer_name, customer_phone, customer_email, items,
+            subtotal, tax, total_amount, status, payment_method, payment_status,
+            stripe_session_id, order_date, estimated_completion, estimated_time,
+            time_remaining, location_id, notes
+          FROM orders
+        `)
+        
+        // Drop old table and rename new one
+        await query(`DROP TABLE orders`)
+        await query(`ALTER TABLE orders_new RENAME TO orders`)
+        console.log('✅ Cleaned up duplicate total column')
       }
     }
     
