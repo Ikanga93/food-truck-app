@@ -97,11 +97,6 @@ app.use(cors({
 // Increased JSON payload limit to handle base64 encoded images (default is 100kb)
 app.use(express.json({ limit: '10mb' }))
 
-// Serve static files from React build in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')))
-}
-
 // Initialize database
 initializeDatabase()
 
@@ -1001,7 +996,22 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV,
+    version: '1.0.0'
+  })
+})
+
+// Route debugging endpoint
+app.get('/api/debug-routes', (req, res) => {
+  res.json({
+    environment: process.env.NODE_ENV,
+    routes: {
+      'order-success': '/order-success',
+      'api-routes': ['/api/orders', '/api/verify-payment'],
+      'static-files': process.env.NODE_ENV === 'production' ? 'Served from /dist' : 'Development mode'
+    },
+    message: 'Route debugging info'
   })
 })
 
@@ -1046,11 +1056,20 @@ app.get('/api/debug-db', async (req, res) => {
 
 // Serve React app for client-side routing in production
 if (process.env.NODE_ENV === 'production') {
+  // Serve static files first
+  app.use(express.static(path.join(__dirname, '../dist')))
+  
+  // Handle all non-API routes by serving the React app
   app.get('*', (req, res) => {
     // Don't serve React app for API routes
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ error: 'API endpoint not found' })
     }
+    
+    // Log the route being accessed for debugging
+    console.log(`Serving React app for route: ${req.path}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`)
+    
+    // Always serve the React app index.html for client-side routing
     res.sendFile(path.join(__dirname, '../dist/index.html'))
   })
 }
