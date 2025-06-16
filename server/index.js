@@ -210,6 +210,13 @@ app.post('/api/orders', async (req, res) => {
       }
     }
 
+    // Ensure frontendUrl doesn't end with a slash to prevent double slashes
+    frontendUrl = frontendUrl.replace(/\/+$/, '')
+    
+    // Log the frontend URL for debugging
+    console.log(`🔗 Frontend URL for Stripe: ${frontendUrl}`)
+    console.log(`🔗 Success URL will be: ${frontendUrl}/order-success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`)
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -1115,8 +1122,15 @@ if (process.env.NODE_ENV === 'production') {
       return res.status(404).json({ error: 'API endpoint not found' })
     }
     
-    // Log the route being accessed for debugging
-    console.log(`🔄 Serving React app for route: ${req.path}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`)
+    // Enhanced logging for debugging double slash issues
+    console.log(`🔄 Serving React app for route: ${req.path}`)
+    console.log(`🔄 Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`)
+    console.log(`🔄 Query params: ${JSON.stringify(req.query)}`)
+    
+    // Check for double slash in path and log it
+    if (req.path.includes('//')) {
+      console.log(`⚠️ DOUBLE SLASH DETECTED in path: ${req.path}`)
+    }
     
     // Set proper headers for HTML
     res.setHeader('Content-Type', 'text/html');
