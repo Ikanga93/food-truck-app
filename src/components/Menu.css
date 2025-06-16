@@ -60,9 +60,9 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   border: 1px solid #f0f0f0;
-  display: flex;
-  flex-direction: row;
-  min-height: 120px;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 280px !important;
   width: 100%;
 }
 
@@ -71,18 +71,9 @@
   transform: translateY(-1px);
 }
 
-.menu-item-content {
-  flex: 1;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-width: 0; /* Prevents flex item from overflowing */
-}
-
 .menu-item-image {
-  width: 100px;
-  height: 120px;
+  width: 100% !important;
+  height: 70% !important;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -93,15 +84,27 @@
 }
 
 .menu-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
   object-position: center;
   transition: transform 0.3s ease;
 }
 
 .menu-item:hover .menu-image {
   transform: scale(1.05);
+}
+
+.menu-item-content {
+  flex: 1;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-width: 0; /* Prevents flex item from overflowing */
+  height: 30% !important;
+  gap: 3px;
+  overflow: hidden;
 }
 
 .menu-emoji {
@@ -479,14 +482,7 @@
   }
   
   .menu-item {
-    flex-direction: column;
-    min-height: auto;
-    max-width: none;
-  }
-  
-  .menu-item-image {
-    width: 100%;
-    height: 140px;
+    min-height: 320px;
   }
   
   .menu-item-content {
@@ -515,17 +511,8 @@
 
 /* Desktop Styles (1024px and up) */
 @media (min-width: 1024px) {
-  .menu {
-    padding: 80px 0;
-  }
-  
   .container {
     padding: 0 32px;
-  }
-  
-  .category-title {
-    font-size: 2.25rem;
-    margin-bottom: 40px;
   }
   
   .menu-items {
@@ -533,8 +520,8 @@
     gap: 24px;
   }
   
-  .menu-item-image {
-    height: 160px;
+  .menu-item {
+    min-height: 340px;
   }
   
   .menu-item-content {
@@ -558,8 +545,8 @@
     gap: 28px;
   }
   
-  .menu-item-image {
-    height: 180px;
+  .menu-item {
+    min-height: 360px;
   }
   
   .menu-emoji {
