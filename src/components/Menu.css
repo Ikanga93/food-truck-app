@@ -1,6 +1,11 @@
 /* Mobile-First Responsive Menu Styles */
+.menu-section {
+  padding: 20px 0;
+  background: white;
+}
+
 .menu {
-  padding: 40px 0;
+  padding: 20px 0;
   background: white;
 }
 
@@ -12,17 +17,17 @@
 
 /* Category Section */
 .menu-category {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .category-title {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--dark-brown);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   text-align: center;
   position: relative;
-  padding-bottom: 12px;
+  padding-bottom: 8px;
 }
 
 .category-title::after {
@@ -41,15 +46,15 @@
 .menu-items {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .menu-grid {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
 /* Mobile-Optimized Menu Item Card */
@@ -519,6 +524,10 @@
 
 /* Tablet Styles (768px and up) */
 @media (min-width: 768px) {
+  .menu-section {
+    padding: 40px 0;
+  }
+  
   .menu {
     padding: 60px 0;
   }
@@ -533,13 +542,13 @@
   }
   
   .menu-category {
-    margin-bottom: 32px;
+    margin-bottom: 16px;
   }
   
   .menu-items {
     grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    margin-bottom: 20px;
+    gap: 16px;
+    margin-bottom: 12px;
   }
   
   .menu-item {
@@ -572,12 +581,16 @@
 
 /* Desktop Styles (1024px and up) */
 @media (min-width: 1024px) {
+  .menu-section {
+    padding: 50px 0;
+  }
+  
   .container {
     padding: 0 32px;
   }
   
   .menu-category {
-    margin-bottom: 40px;
+    margin-bottom: 20px;
   }
   
   .menu-items {
