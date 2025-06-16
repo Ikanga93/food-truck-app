@@ -234,6 +234,7 @@ const DashboardPage = ({ onLogout }) => {
 
   // Menu item modal functions
   const openAddMenuModal = () => {
+    console.log('Opening add menu modal')
     setEditingMenuItem(null)
     setMenuForm({
       name: '',
@@ -246,6 +247,7 @@ const DashboardPage = ({ onLogout }) => {
       imageFile: null
     })
     setShowMenuModal(true)
+    console.log('Modal state set to true')
   }
 
   const openEditMenuModal = (item) => {
@@ -306,11 +308,21 @@ const DashboardPage = ({ onLogout }) => {
     }
 
     try {
+      // Check if admin token exists
+      const adminToken = localStorage.getItem('adminAccessToken')
+      if (!adminToken) {
+        alert('Admin authentication required. Please log in again.')
+        onLogout()
+        return
+      }
+
       let imageUrl = menuForm.image_url
 
       // Upload new image if selected
       if (menuForm.imageFile) {
+        console.log('Uploading image...')
         imageUrl = await uploadImage(menuForm.imageFile)
+        console.log('Image uploaded successfully:', imageUrl)
       }
 
       const menuData = {
@@ -323,20 +335,36 @@ const DashboardPage = ({ onLogout }) => {
         image_url: imageUrl
       }
 
+      console.log('Submitting menu data:', menuData)
+
       if (editingMenuItem) {
         // Update existing item
+        console.log('Updating menu item:', editingMenuItem.id)
         await ApiService.updateMenuItem(editingMenuItem.id, menuData)
       } else {
         // Add new item
+        console.log('Adding new menu item')
         await ApiService.addMenuItem(menuData)
       }
 
       // Refresh menu items
       await loadMenuItems()
       closeMenuModal()
+      alert('Menu item saved successfully!')
     } catch (error) {
       console.error('Error saving menu item:', error)
-      alert('Failed to save menu item. Please try again.')
+      
+      // Provide more specific error messages
+      if (error.message.includes('authentication') || error.message.includes('401')) {
+        alert('Authentication failed. Please log in again.')
+        onLogout()
+      } else if (error.message.includes('413') || error.message.includes('Payload Too Large')) {
+        alert('Image file is too large. Please use a smaller image (under 5MB).')
+      } else if (error.message.includes('Invalid JSON')) {
+        alert('Server response error. Please try again.')
+      } else {
+        alert(`Failed to save menu item: ${error.message}`)
+      }
     }
   }
 
