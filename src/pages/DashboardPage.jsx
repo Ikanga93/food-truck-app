@@ -540,7 +540,9 @@ const DashboardPage = ({ onLogout }) => {
           <h2>Order Management</h2>
           <div className="order-stats">
             <div className="stat-card">
-              <span className="stat-number">{orders.filter(o => o.status === 'pending').length}</span>
+              <span className="stat-number">{orders.filter(o => 
+                o.status === 'pending' || o.status === 'pending_payment' || o.status === 'confirmed'
+              ).length}</span>
               <span className="stat-label">Pending</span>
             </div>
             <div className="stat-card">
@@ -550,6 +552,14 @@ const DashboardPage = ({ onLogout }) => {
             <div className="stat-card">
               <span className="stat-number">{orders.filter(o => o.status === 'ready').length}</span>
               <span className="stat-label">Ready</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{orders.filter(o => o.status === 'completed').length}</span>
+              <span className="stat-label">Completed</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{orders.length}</span>
+              <span className="stat-label">Total Orders</span>
             </div>
           </div>
         </div>
@@ -592,7 +602,7 @@ const DashboardPage = ({ onLogout }) => {
                 </div>
 
                 <div className="order-total">
-                  <strong>Total: ${(parseFloat(order.total) || 0).toFixed(2)}</strong>
+                  <strong>Total: ${(parseFloat(order.total_amount) || 0).toFixed(2)}</strong>
                 </div>
 
                 {order.status === 'cooking' && order.time_remaining > 0 && (

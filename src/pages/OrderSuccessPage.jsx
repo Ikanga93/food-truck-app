@@ -131,33 +131,6 @@ const OrderSuccessPage = () => {
               </div>
             </div>
 
-            <div className="next-steps">
-              <h3>What's Next?</h3>
-              <div className="steps-list">
-                <div className="step">
-                  <div className="step-number">1</div>
-                  <div className="step-content">
-                    <h4>Order Confirmation</h4>
-                    <p>We've received your order and payment. You'll receive updates via SMS.</p>
-                  </div>
-                </div>
-                <div className="step">
-                  <div className="step-number">2</div>
-                  <div className="step-content">
-                    <h4>Preparation</h4>
-                    <p>Our chefs will start preparing your delicious meal.</p>
-                  </div>
-                </div>
-                <div className="step">
-                  <div className="step-number">3</div>
-                  <div className="step-content">
-                    <h4>Ready for Pickup</h4>
-                    <p>We'll notify you when your order is ready at the food truck.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div className="action-buttons">
               <Link to={`/order-tracking/${order.id}`} className="btn btn-primary">
                 Track Your Order

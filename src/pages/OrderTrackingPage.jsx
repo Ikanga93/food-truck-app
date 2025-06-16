@@ -93,30 +93,67 @@ const OrderTrackingPage = () => {
   const getEstimatedTimeRemaining = (order) => {
     if (!order) return null
     
-    const estimatedTime = order.estimated_time || 20 // Default to 20 minutes
-    const orderTime = new Date(order.order_date || order.orderTime || order.order_time)
-    const now = new Date()
-    const estimatedReady = new Date(orderTime.getTime() + estimatedTime * 60000)
-    const remaining = Math.max(0, Math.floor((estimatedReady.getTime() - now.getTime()) / 1000))
+    // Use time_remaining from server if available (admin dashboard sets this)
+    if (order.time_remaining !== undefined && order.time_remaining !== null && order.time_remaining > 0) {
+      const minutes = Math.floor(order.time_remaining)
+      const seconds = Math.floor((order.time_remaining % 1) * 60)
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`
+    }
     
-    if (remaining <= 0) return 'Ready now!'
+    const estimatedTime = order.estimated_time || 25 // Default to 25 minutes to match confirmation
     
-    const minutes = Math.floor(remaining / 60)
-    const seconds = remaining % 60
-    
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+    // For different statuses, calculate differently
+    if (order.status === 'confirmed') {
+      // Order is confirmed but not cooking yet - show full estimated time
+      return `${estimatedTime}:00`
+    } else if (order.status === 'cooking') {
+      // Calculate based on order date for cooking status using currentTime for real-time updates
+      const orderTime = new Date(order.order_date || order.orderTime || order.order_time)
+      const now = currentTime // Use currentTime state for real-time updates
+      const estimatedReady = new Date(orderTime.getTime() + estimatedTime * 60000)
+      const remaining = Math.max(0, Math.floor((estimatedReady.getTime() - now.getTime()) / 1000))
+      
+      if (remaining <= 0) return 'Ready now!'
+      
+      const minutes = Math.floor(remaining / 60)
+      const seconds = remaining % 60
+      
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`
+    } else if (order.status === 'ready') {
+      return 'Ready now!'
+    } else {
+      // For other statuses, show estimated time
+      return `${estimatedTime}:00`
+    }
   }
 
   const getProgressPercentage = (order) => {
     if (!order) return 0
     
-    const estimatedTime = order.estimated_time || 20 // Default to 20 minutes
-    const orderTime = new Date(order.order_date || order.orderTime || order.order_time)
-    const now = new Date()
-    const elapsed = Math.max(0, (now.getTime() - orderTime.getTime()) / 1000 / 60) // elapsed time in minutes
-    const progress = Math.min(100, Math.max(0, (elapsed / estimatedTime) * 100))
-    
-    return Math.round(progress)
+    // Base progress on order status
+    switch (order.status) {
+      case 'pending_payment':
+        return 0
+      case 'confirmed':
+        return 10 // Order is confirmed, minimal progress
+      case 'cooking': {
+        // Calculate progress based on cooking time using currentTime for real-time updates
+        const estimatedTime = order.estimated_time || 25 // Default to 25 minutes
+        const orderTime = new Date(order.order_date || order.orderTime || order.order_time)
+        const now = currentTime // Use currentTime state for real-time updates
+        const elapsed = Math.max(0, (now.getTime() - orderTime.getTime()) / 1000 / 60) // elapsed time in minutes
+        
+        // Start progress at 10% (confirmed) and go to 90% (almost ready)
+        const cookingProgress = Math.min(80, Math.max(0, (elapsed / estimatedTime) * 80))
+        return Math.round(10 + cookingProgress) // 10% to 90%
+      }
+      case 'ready':
+        return 100
+      case 'completed':
+        return 100
+      default:
+        return 0
+    }
   }
 
   const getElapsedTime = (order) => {
@@ -143,16 +180,41 @@ const OrderTrackingPage = () => {
   // Timer effect for live updates
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date())
+      const newTime = new Date()
+      setCurrentTime(newTime)
+      // Debug logging to verify timer is working
+      if (order && (order.status === 'cooking' || order.status === 'confirmed')) {
+        console.log('Timer update:', newTime.toLocaleTimeString())
+      }
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [order])
 
   // Initialize current time
   useEffect(() => {
     setCurrentTime(new Date())
   }, [])
+
+  // Add a simple counter to force re-renders and verify updates are happening
+  const [updateCounter, setUpdateCounter] = useState(0)
+  
+  useEffect(() => {
+    const counterTimer = setInterval(() => {
+      setUpdateCounter(prev => prev + 1)
+    }, 1000)
+    
+    return () => clearInterval(counterTimer)
+  }, [])
+
+  // Force re-render when current time changes to update progress
+  useEffect(() => {
+    // This ensures the progress calculations are updated every second
+    if (order && (order.status === 'cooking' || order.status === 'confirmed')) {
+      // This effect will trigger re-render when currentTime changes
+      console.log('Progress update triggered - Status:', order.status, 'Time:', currentTime.toLocaleTimeString())
+    }
+  }, [currentTime, order, updateCounter])
 
   if (isLoading) {
     return (
@@ -274,6 +336,24 @@ const OrderTrackingPage = () => {
                     style={{ width: `${getProgressPercentage(order)}%` }}
                   ></div>
                 </div>
+              </div>
+              
+              {/* Debug information - remove this after testing */}
+              <div style={{ 
+                marginTop: '10px', 
+                padding: '10px', 
+                background: '#f5f5f5', 
+                borderRadius: '8px', 
+                fontSize: '0.8rem',
+                fontFamily: 'monospace' 
+              }}>
+                <div>Current Time: {currentTime.toLocaleTimeString()}</div>
+                <div>Order Time: {new Date(order.order_date || order.orderTime || order.order_time).toLocaleTimeString()}</div>
+                <div>Estimated Time: {order.estimated_time || 25} minutes</div>
+                <div>Status: {order.status}</div>
+                <div>Update Counter: {updateCounter}</div>
+                <div>Progress: {getProgressPercentage(order)}%</div>
+                <div>Time Remaining: {getEstimatedTimeRemaining(order)}</div>
               </div>
             </div>
           )}

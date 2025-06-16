@@ -144,7 +144,7 @@ app.post('/api/orders', async (req, res) => {
       tax,
       total,
       locationId,
-      estimatedTime = 20,
+      estimatedTime = 25,
       userId = null
     } = req.body
 
