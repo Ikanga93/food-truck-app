@@ -1,6 +1,7 @@
 import React from 'react'
 import { ArrowLeft, MapPin, Navigation, Clock, Phone, Calendar } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import ApiService from '../services/ApiService'
 import './LocationPage.css'
 
 const LocationPage = () => {
@@ -81,6 +82,28 @@ const LocationPage = () => {
   const currentDay = getCurrentDayName()
   const actualTodayLocation = weeklySchedule.find(schedule => schedule.day === currentDay)
 
+  // Live locations state (New functionality)
+  const [liveLocations, setLiveLocations] = React.useState([])
+  const [isLoadingLiveLocations, setIsLoadingLiveLocations] = React.useState(true)
+
+  // Fetch live locations on component mount (New functionality)
+  React.useEffect(() => {
+    const fetchLiveLocations = async () => {
+      try {
+        const data = await ApiService.getLiveLocations()
+        setLiveLocations(data)
+      } catch (error) {
+        console.warn('Live locations not available:', error)
+        // Set empty array if live locations API fails - this is okay for new feature
+        setLiveLocations([])
+      } finally {
+        setIsLoadingLiveLocations(false)
+      }
+    }
+
+    fetchLiveLocations()
+  }, [])
+
   return (
     <div className="location-page">
       <div className="location-hero">
@@ -95,6 +118,85 @@ const LocationPage = () => {
           </p>
         </div>
       </div>
+
+      {/* Live Locations Section (New functionality) */}
+      {liveLocations.length > 0 && (
+        <div className="live-locations">
+          <div className="container">
+            <h2 className="live-locations-title">🚚 Food Trucks Right Now!</h2>
+            <p className="live-locations-subtitle">
+              Our trucks are currently at these locations
+            </p>
+            
+            <div className="live-locations-grid">
+              {liveLocations.map((liveLocation) => (
+                <div key={liveLocation.id} className="live-location-card">
+                  <div className="live-location-header">
+                    <div className="live-badge">
+                      <span className="live-indicator">●</span>
+                      LIVE NOW
+                    </div>
+                    <h3 className="live-truck-name">{liveLocation.truck_name}</h3>
+                  </div>
+                  
+                  <div className="live-location-content">
+                    <div className="live-location-info">
+                      <div className="info-item">
+                        <MapPin className="info-icon" />
+                        <span>{liveLocation.current_address}</span>
+                      </div>
+                      {liveLocation.hours_today && (
+                        <div className="info-item">
+                          <Clock className="info-icon" />
+                          <span>{liveLocation.hours_today}</span>
+                        </div>
+                      )}
+                      {liveLocation.description && (
+                        <div className="info-item">
+                          <span className="description">{liveLocation.description}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="live-location-actions">
+                      {liveLocation.latitude && liveLocation.longitude ? (
+                        <button 
+                          className="btn btn-primary gps-btn"
+                          onClick={() => openInMaps(
+                            { lat: liveLocation.latitude, lng: liveLocation.longitude }, 
+                            liveLocation.current_address
+                          )}
+                        >
+                          <Navigation size={20} />
+                          Get Directions
+                        </button>
+                      ) : (
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(liveLocation.current_address)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-primary gps-btn"
+                        >
+                          <Navigation size={20} />
+                          Find on Maps
+                        </a>
+                      )}
+                      <a href="tel:+12172550210" className="btn btn-secondary">
+                        <Phone size={20} />
+                        Call Us
+                      </a>
+                    </div>
+                  </div>
+                  
+                  <div className="live-location-time">
+                    Last updated: {new Date(liveLocation.last_updated).toLocaleTimeString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Today's Location Section */}
       {actualTodayLocation && (

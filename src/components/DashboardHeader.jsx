@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LogOut, User, Home, BarChart3, Settings as SettingsIcon, Menu as MenuIcon, MapPin } from 'lucide-react'
+import { LogOut, User, Home, BarChart3, Settings as SettingsIcon, Menu as MenuIcon, MapPin, Navigation } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useBusinessConfig } from '../context/BusinessContext'
 import Logo from './Logo'
@@ -52,6 +52,13 @@ const DashboardHeader = ({ onLogout, activeTab, onTabChange }) => {
           >
             <MapPin size={18} />
             Locations
+          </button>
+          <button 
+            className={`dashboard-nav-btn ${activeTab === 'live-locations' ? 'active' : ''}`}
+            onClick={() => onTabChange('live-locations')}
+          >
+            <Navigation size={18} />
+            Live Locations
           </button>
           <button 
             className={`dashboard-nav-btn ${activeTab === 'settings' ? 'active' : ''}`}

@@ -17,7 +17,8 @@ import {
   Timer,
   Truck,
   Building,
-  Phone
+  Phone,
+  Navigation
 } from 'lucide-react'
 import { useBusinessConfig } from '../context/BusinessContext'
 import DashboardHeader from '../components/DashboardHeader'
@@ -51,11 +52,17 @@ const DashboardPage = ({ onLogout }) => {
   const [locations, setLocations] = useState([])
   const [isLoadingLocations, setIsLoadingLocations] = useState(false)
 
+  // Live locations state (New functionality)
+  const [liveLocations, setLiveLocations] = useState([])
+  const [isLoadingLiveLocations, setIsLoadingLiveLocations] = useState(false)
+
   // Modal states
   const [showMenuModal, setShowMenuModal] = useState(false)
   const [showLocationModal, setShowLocationModal] = useState(false)
+  const [showLiveLocationModal, setShowLiveLocationModal] = useState(false) // New modal state
   const [editingMenuItem, setEditingMenuItem] = useState(null)
   const [editingLocation, setEditingLocation] = useState(null)
+  const [editingLiveLocation, setEditingLiveLocation] = useState(null) // New editing state
 
   // Form states
   const [menuForm, setMenuForm] = useState({
@@ -80,6 +87,21 @@ const DashboardPage = ({ onLogout }) => {
     status: 'active'
   })
 
+  // Live location form state (New functionality)
+  const [liveLocationForm, setLiveLocationForm] = useState({
+    truck_name: '',
+    current_address: '',
+    latitude: '',
+    longitude: '',
+    description: '',
+    hours_today: '',
+    is_active: true
+  })
+
+  // Geolocation state
+  const [isGettingLocation, setIsGettingLocation] = useState(false)
+  const [locationError, setLocationError] = useState('')
+
   // Initialize Socket.IO and load data
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -92,6 +114,14 @@ const DashboardPage = ({ onLogout }) => {
           loadMenuItems(),
           loadLocations()
         ])
+
+        // Load live locations (New functionality) - don't fail if this errors
+        try {
+          await loadLiveLocations()
+        } catch (liveLocationError) {
+          console.warn('Live locations not available yet:', liveLocationError.message)
+          // This is okay - live locations is a new feature that admins will populate
+        }
 
         // Try to connect to Socket.IO for real-time updates (optional)
         try {
@@ -165,6 +195,20 @@ const DashboardPage = ({ onLogout }) => {
       throw error // Re-throw to be caught by the main error handler
     } finally {
       setIsLoadingLocations(false)
+    }
+  }
+
+  const loadLiveLocations = async () => {
+    try {
+      setIsLoadingLiveLocations(true)
+      const liveLocationsData = await ApiService.getLiveLocations()
+      setLiveLocations(liveLocationsData)
+    } catch (error) {
+      console.error('Error loading live locations:', error)
+      // Don't throw error - just set empty array and continue
+      setLiveLocations([])
+    } finally {
+      setIsLoadingLiveLocations(false)
     }
   }
 
@@ -468,16 +512,104 @@ const DashboardPage = ({ onLogout }) => {
   }
 
   const handleDeleteLocation = async (locationId) => {
-    if (!confirm('Are you sure you want to delete this location?')) {
+    try {
+      if (window.confirm('Are you sure you want to delete this location?')) {
+        await ApiService.deleteLocation(locationId)
+        await loadLocations()
+        alert('Location deleted successfully!')
+      }
+    } catch (error) {
+      console.error('Error deleting location:', error)
+      alert('Failed to delete location. Please try again.')
+    }
+  }
+
+  // Live Location Management Functions (New functionality)
+  const openAddLiveLocationModal = () => {
+    setEditingLiveLocation(null)
+    setLiveLocationForm({
+      truck_name: '',
+      current_address: '',
+      latitude: '',
+      longitude: '',
+      description: '',
+      hours_today: '',
+      is_active: true
+    })
+    setLocationError('') // Clear any previous location errors
+    setShowLiveLocationModal(true)
+  }
+
+  const openEditLiveLocationModal = (liveLocation) => {
+    setEditingLiveLocation(liveLocation)
+    setLiveLocationForm({
+      truck_name: liveLocation.truck_name,
+      current_address: liveLocation.current_address,
+      latitude: liveLocation.latitude || '',
+      longitude: liveLocation.longitude || '',
+      description: liveLocation.description || '',
+      hours_today: liveLocation.hours_today || '',
+      is_active: liveLocation.is_active
+    })
+    setLocationError('') // Clear any previous location errors
+    setShowLiveLocationModal(true)
+  }
+
+  const closeLiveLocationModal = () => {
+    setShowLiveLocationModal(false)
+    setEditingLiveLocation(null)
+    setLocationError('') // Clear location errors when closing modal
+  }
+
+  const handleLiveLocationFormChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setLiveLocationForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+  }
+
+  const handleLiveLocationSubmit = async (e) => {
+    e.preventDefault()
+    
+    // Only require truck name - make address optional
+    if (!liveLocationForm.truck_name.trim()) {
+      alert('Please enter a truck name')
       return
     }
 
     try {
-      await ApiService.deleteLocation(locationId)
-      setLocations(prevLocations => prevLocations.filter(location => location.id !== locationId))
+      const submitData = {
+        ...liveLocationForm,
+        // Use a default address if none provided
+        current_address: liveLocationForm.current_address.trim() || 'Location update in progress...'
+      }
+
+      if (editingLiveLocation) {
+        await ApiService.updateLiveLocation(editingLiveLocation.id, submitData)
+        alert('Live location updated successfully!')
+      } else {
+        await ApiService.addLiveLocation(submitData)
+        alert('Live location added successfully!')
+      }
+      await loadLiveLocations()
+      closeLiveLocationModal()
     } catch (error) {
-      console.error('Error deleting location:', error)
-      alert('Failed to delete location. Please try again.')
+      console.error('Error saving live location:', error)
+      alert('Failed to save live location. Please try again.')
+    }
+  }
+
+  const handleDeleteLiveLocation = async (liveLocationId) => {
+    try {
+      if (window.confirm('Are you sure you want to delete this live location?')) {
+        await ApiService.deleteLiveLocation(liveLocationId)
+        await loadLiveLocations()
+        alert('Live location deleted successfully!')
+      }
+    } catch (error) {
+      console.error('Error deleting live location:', error)
+      alert('Failed to delete live location. Please try again.')
     }
   }
 
@@ -508,6 +640,92 @@ const DashboardPage = ({ onLogout }) => {
   const formatOrderTime = (orderTime) => {
     const date = new Date(orderTime)
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  // Geolocation function
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true)
+    setLocationError('')
+
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by this browser.')
+      setIsGettingLocation(false)
+      return
+    }
+
+    // Try high accuracy first, then fallback to lower accuracy
+    const attemptLocation = (enableHighAccuracy = true) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+          setLiveLocationForm(prev => ({
+            ...prev,
+            latitude: latitude.toFixed(6),
+            longitude: longitude.toFixed(6)
+          }))
+          setIsGettingLocation(false)
+          
+          // Only try reverse geocoding if we don't have an address yet
+          if (!liveLocationForm.current_address.trim()) {
+            reverseGeocode(latitude, longitude)
+          }
+        },
+        (error) => {
+          console.log('Geolocation error:', error.code, error.message)
+          
+          // If high accuracy failed, try with lower accuracy
+          if (enableHighAccuracy && error.code === error.POSITION_UNAVAILABLE) {
+            console.log('Retrying with lower accuracy...')
+            attemptLocation(false)
+            return
+          }
+          
+          let errorMessage = 'Unable to get your exact location. '
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += 'Please allow location access in your browser settings.'
+              break
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += 'This may be due to a macOS Core Location issue. You can enter coordinates manually.'
+              break
+            case error.TIMEOUT:
+              errorMessage += 'Location request timed out. Please try again or enter coordinates manually.'
+              break
+            default:
+              errorMessage += 'You can still add the location by entering coordinates manually.'
+              break
+          }
+          setLocationError(errorMessage)
+          setIsGettingLocation(false)
+        },
+        {
+          enableHighAccuracy: enableHighAccuracy,
+          timeout: enableHighAccuracy ? 15000 : 30000, // Longer timeout for low accuracy
+          maximumAge: 60000 // Accept 1-minute old location
+        }
+      )
+    }
+
+    attemptLocation(true)
+  }
+
+  // Reverse geocoding to get address from coordinates
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      // Using a simple geocoding service (you might want to use Google Maps API with your key)
+      const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`)
+      const data = await response.json()
+      
+      if (data && data.displayName) {
+        setLiveLocationForm(prev => ({
+          ...prev,
+          current_address: data.displayName
+        }))
+      }
+    } catch (error) {
+      console.log('Reverse geocoding failed:', error)
+      // This is optional, so we don't show an error to the user
+    }
   }
 
   const renderOrdersTab = () => {
@@ -727,64 +945,149 @@ const DashboardPage = ({ onLogout }) => {
   const renderLocationsTab = () => (
     <div className="locations-section">
       <div className="section-header">
-        <h2>Location Management</h2>
-        <button className="btn-add" onClick={openAddLocationModal}>
+        <h2>Scheduled Locations</h2>
+        <button 
+          className="btn-add"
+          onClick={openAddLocationModal}
+        >
           <Plus size={18} />
           Add Location
         </button>
       </div>
 
-      {locations.length === 0 ? (
-        <div className="empty-state">
-          <MapPin size={48} />
-          <h3>No locations yet</h3>
-          <p>Add your first location to start serving customers.</p>
-          <button className="btn-add-first" onClick={openAddLocationModal}>
-            <Plus size={18} />
-            Add First Location
-          </button>
+      {isLoadingLocations ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading locations...</p>
         </div>
       ) : (
         <div className="locations-grid">
-          {locations.map(location => (
+          {locations.map((location) => (
             <div key={location.id} className="location-card">
               <div className="location-header">
-                <div className="location-icon">
-                  {location.type === 'mobile' ? <Truck size={24} /> : <Building size={24} />}
-                </div>
-                <div className="location-info">
-                  <h3>{location.name}</h3>
-                  <p className="location-type">{location.type === 'mobile' ? 'Food Truck' : 'Restaurant'}</p>
-                  <div className={`status-badge ${location.status}`}>
-                    {location.status}
-                  </div>
+                <h3 className="location-name">
+                  <Building size={16} />
+                  {location.name}
+                </h3>
+                <div className="location-actions">
+                  <button 
+                    className="btn-edit"
+                    onClick={() => openEditLocationModal(location)}
+                  >
+                    <Edit3 size={16} />
+                  </button>
+                  <button 
+                    className="btn-delete"
+                    onClick={() => handleDeleteLocation(location.id)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
-
+              
               <div className="location-details">
+                <p><strong>Type:</strong> {location.type}</p>
+                {location.description && (
+                  <p><strong>Description:</strong> {location.description}</p>
+                )}
                 {location.current_location && (
-                  <p><MapPin size={14} /> {location.current_location}</p>
+                  <p><strong>Current Location:</strong> {location.current_location}</p>
                 )}
                 {location.schedule && (
-                  <p><Clock size={14} /> {location.schedule}</p>
+                  <p><strong>Schedule:</strong> {location.schedule}</p>
                 )}
                 {location.phone && (
-                  <p><Phone size={14} /> {location.phone}</p>
+                  <p><strong>Phone:</strong> {location.phone}</p>
                 )}
-              </div>
-
-              <div className="location-actions">
-                <button className="btn-edit" onClick={() => openEditLocationModal(location)}>
-                  <Edit3 size={14} />
-                  Edit
-                </button>
-                <button className="btn-delete" onClick={() => handleDeleteLocation(location.id)}>
-                  <Trash2 size={14} />
-                  Delete
-                </button>
+                <p><strong>Status:</strong> 
+                  <span className={`status-badge ${location.status}`}>
+                    {location.status}
+                  </span>
+                </p>
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+
+  // Live Locations Tab (New functionality)
+  const renderLiveLocationsTab = () => (
+    <div className="live-locations-section">
+      <div className="section-header">
+        <h2>Live Food Truck Locations</h2>
+        <button 
+          className="btn-add"
+          onClick={openAddLiveLocationModal}
+        >
+          <Plus size={18} />
+          Add Live Location
+        </button>
+      </div>
+
+      {isLoadingLiveLocations ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading live locations...</p>
+        </div>
+      ) : (
+        <div className="locations-grid">
+          {liveLocations.map((liveLocation) => (
+            <div key={liveLocation.id} className="location-card live-location-card">
+              <div className="location-header">
+                <h3 className="location-name">
+                  <Truck size={16} />
+                  {liveLocation.truck_name}
+                </h3>
+                <div className="location-actions">
+                  <button 
+                    className="btn-edit"
+                    onClick={() => openEditLiveLocationModal(liveLocation)}
+                  >
+                    <Edit3 size={16} />
+                  </button>
+                  <button 
+                    className="btn-delete"
+                    onClick={() => handleDeleteLiveLocation(liveLocation.id)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="location-details">
+                <p><strong>Current Address:</strong> {liveLocation.current_address}</p>
+                {liveLocation.description && (
+                  <p><strong>Description:</strong> {liveLocation.description}</p>
+                )}
+                {liveLocation.hours_today && (
+                  <p><strong>Hours Today:</strong> {liveLocation.hours_today}</p>
+                )}
+                {liveLocation.latitude && liveLocation.longitude && (
+                  <p><strong>Coordinates:</strong> {liveLocation.latitude}, {liveLocation.longitude}</p>
+                )}
+                <p><strong>Status:</strong> 
+                  <span className={`status-badge ${liveLocation.is_active ? 'active' : 'inactive'}`}>
+                    {liveLocation.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </p>
+                <p><strong>Last Updated:</strong> {new Date(liveLocation.last_updated).toLocaleString()}</p>
+              </div>
+            </div>
+          ))}
+          
+          {liveLocations.length === 0 && (
+            <div className="empty-state">
+              <Navigation size={48} />
+              <h3>No Live Locations Yet</h3>
+              <p>Add your first live location to show customers where your food trucks are right now!</p>
+              <button className="btn-add-first" onClick={openAddLiveLocationModal}>
+                <Plus size={18} />
+                Add First Live Location
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -873,6 +1176,8 @@ const DashboardPage = ({ onLogout }) => {
         return renderMenuTab()
       case 'locations':
         return renderLocationsTab()
+      case 'live-locations':
+        return renderLiveLocationsTab()
       case 'settings':
         return renderSettingsTab()
       default:
@@ -1174,6 +1479,148 @@ const DashboardPage = ({ onLogout }) => {
                   </button>
                   <button type="submit" className="btn-save">
                     {editingLocation ? 'Update Location' : 'Add Location'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Live Location Modal (New functionality) */}
+        {showLiveLocationModal && (
+          <div className="modal-overlay" onClick={closeLiveLocationModal}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>{editingLiveLocation ? 'Edit Live Location' : 'Add Live Location'}</h3>
+                <button className="modal-close" onClick={closeLiveLocationModal}>×</button>
+              </div>
+              
+              <form onSubmit={handleLiveLocationSubmit} className="modal-form">
+                <div className="form-group">
+                  <label>Truck Name *</label>
+                  <input
+                    type="text"
+                    name="truck_name"
+                    value={liveLocationForm.truck_name}
+                    onChange={handleLiveLocationFormChange}
+                    required
+                    placeholder="Fernando's Food Truck #1"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Current Address</label>
+                  <input
+                    type="text"
+                    name="current_address"
+                    value={liveLocationForm.current_address}
+                    onChange={handleLiveLocationFormChange}
+                    placeholder="123 Main Street, Downtown (optional - will auto-fill with location)"
+                  />
+                  <small className="form-help">
+                    Address is optional. If you use "Use My Location", the address will be filled automatically.
+                  </small>
+                </div>
+
+                <div className="form-group">
+                  <label>Location Coordinates</label>
+                  <div className="location-input-group">
+                    <div className="coordinate-inputs">
+                      <input
+                        type="number"
+                        name="latitude"
+                        value={liveLocationForm.latitude}
+                        onChange={handleLiveLocationFormChange}
+                        step="any"
+                        placeholder="Latitude"
+                      />
+                      <input
+                        type="number"
+                        name="longitude"
+                        value={liveLocationForm.longitude}
+                        onChange={handleLiveLocationFormChange}
+                        step="any"
+                        placeholder="Longitude"
+                      />
+                    </div>
+                    <div className="location-buttons">
+                      <button 
+                        type="button" 
+                        className={`btn-location ${isGettingLocation ? 'loading' : ''}`}
+                        onClick={getCurrentLocation}
+                        disabled={isGettingLocation}
+                      >
+                        <Navigation size={16} />
+                        {isGettingLocation ? 'Getting Location...' : 'Use My Location'}
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn-location-clear"
+                        onClick={() => {
+                          setLiveLocationForm(prev => ({
+                            ...prev,
+                            latitude: '',
+                            longitude: '',
+                            current_address: ''
+                          }))
+                          setLocationError('')
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  {locationError && (
+                    <div className="location-error">
+                      <span className="error-icon">⚠️</span>
+                      {locationError}
+                    </div>
+                  )}
+                  <small className="form-help">
+                    Use "Use My Location" for automatic detection, or enter coordinates manually. Coordinates are optional but help customers find you more easily.
+                  </small>
+                </div>
+
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea
+                    name="description"
+                    value={liveLocationForm.description}
+                    onChange={handleLiveLocationFormChange}
+                    placeholder="Additional details about this location..."
+                    rows="2"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Hours Today</label>
+                  <input
+                    type="text"
+                    name="hours_today"
+                    value={liveLocationForm.hours_today}
+                    onChange={handleLiveLocationFormChange}
+                    placeholder="11:00 AM - 9:00 PM"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="is_active"
+                      checked={liveLocationForm.is_active}
+                      onChange={handleLiveLocationFormChange}
+                    />
+                    Active (visible to customers)
+                  </label>
+                </div>
+
+                <div className="modal-actions">
+                  <button type="button" className="btn-cancel" onClick={closeLiveLocationModal}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-save">
+                    {editingLiveLocation ? 'Update Live Location' : 'Add Live Location'}
                   </button>
                 </div>
               </form>

@@ -662,6 +662,117 @@ app.delete('/api/locations/:id', authenticateToken, authorizeRole(['admin']), as
   }
 })
 
+// Live Locations API Routes (New functionality for real-time truck locations)
+
+// Get all live locations
+app.get('/api/live-locations', async (req, res) => {
+  try {
+    console.log('Live locations endpoint called')
+    
+    // Try to query the live_locations table
+    try {
+      const rows = await queryAll('SELECT * FROM live_locations WHERE is_active = ? ORDER BY last_updated DESC', [true])
+      console.log('Live locations query successful, found:', rows.length, 'locations')
+      res.json(rows)
+    } catch (dbError) {
+      console.log('Live locations table query failed:', dbError.message)
+      
+      // Check if it's a table not found error
+      if (dbError.message.includes('no such table') || dbError.message.includes('does not exist')) {
+        console.log('Live locations table does not exist, returning empty array')
+        res.json([])
+      } else {
+        // Re-throw other database errors
+        throw dbError
+      }
+    }
+  } catch (error) {
+    console.error('Error in live locations endpoint:', error)
+    res.status(500).json({ 
+      error: 'Failed to fetch live locations', 
+      details: error.message,
+      message: 'The live locations feature may not be fully initialized yet. Please try refreshing or contact support.'
+    })
+  }
+})
+
+// Add new live location
+app.post('/api/live-locations', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+  try {
+    const { truck_name, current_address, latitude, longitude, description, hours_today } = req.body
+    
+    if (!truck_name) {
+      return res.status(400).json({ error: 'Truck name is required' })
+    }
+
+    // Use default address if none provided
+    const finalAddress = current_address && current_address.trim() ? current_address.trim() : 'Location update in progress...'
+
+    const result = await query(
+      'INSERT INTO live_locations (truck_name, current_address, latitude, longitude, description, hours_today, last_updated) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
+      [truck_name, finalAddress, latitude, longitude, description, hours_today]
+    )
+
+    // Return the created item
+    let createdLocation
+    if (result.lastID) {
+      // SQLite case
+      createdLocation = await queryOne('SELECT * FROM live_locations WHERE id = ?', [result.lastID])
+    } else {
+      // PostgreSQL case - get the most recently inserted item for this truck
+      createdLocation = await queryOne(
+        'SELECT * FROM live_locations WHERE truck_name = ? AND current_address = ? ORDER BY created_at DESC LIMIT 1',
+        [truck_name, finalAddress]
+      )
+    }
+    
+    res.json(createdLocation)
+  } catch (error) {
+    console.error('Error adding live location:', error)
+    res.status(500).json({ error: 'Failed to add live location' })
+  }
+})
+
+// Update live location
+app.put('/api/live-locations/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params
+    const { truck_name, current_address, latitude, longitude, description, hours_today, is_active } = req.body
+    
+    const result = await query(
+      'UPDATE live_locations SET truck_name = ?, current_address = ?, latitude = ?, longitude = ?, description = ?, hours_today = ?, is_active = ?, last_updated = CURRENT_TIMESTAMP WHERE id = ?',
+      [truck_name, current_address, latitude, longitude, description, hours_today, is_active, id]
+    )
+
+    if (result.changes === 0) {
+      res.status(404).json({ error: 'Live location not found' })
+    } else {
+      res.json({ success: true, changes: result.changes })
+    }
+  } catch (error) {
+    console.error('Error updating live location:', error)
+    res.status(500).json({ error: 'Failed to update live location' })
+  }
+})
+
+// Delete live location
+app.delete('/api/live-locations/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    const result = await query('DELETE FROM live_locations WHERE id = ?', [id])
+    
+    if (result.changes === 0) {
+      res.status(404).json({ error: 'Live location not found' })
+    } else {
+      res.json({ success: true, changes: result.changes })
+    }
+  } catch (error) {
+    console.error('Error deleting live location:', error)
+    res.status(500).json({ error: 'Failed to delete live location' })
+  }
+})
+
 // Timer to update cooking orders - start after database is ready
 setTimeout(() => {
   console.log('🕐 Starting cooking timer...')
@@ -1099,6 +1210,41 @@ app.get('/api/debug-db', async (req, res) => {
   } catch (error) {
     console.error('Database debug error:', error)
     res.status(500).json({ error: 'Database debug failed', details: error.message, stack: error.stack })
+  }
+})
+
+// Debug endpoint for live locations table
+app.get('/api/debug-live-locations', async (req, res) => {
+  try {
+    // Check if live_locations table exists
+    let tableExists = false
+    try {
+      await queryOne('SELECT 1 FROM live_locations LIMIT 1')
+      tableExists = true
+    } catch (error) {
+      console.log('Table check error:', error.message)
+    }
+    
+    // Try to get all records
+    let records = []
+    if (tableExists) {
+      try {
+        records = await queryAll('SELECT * FROM live_locations')
+      } catch (error) {
+        console.log('Records query error:', error.message)
+      }
+    }
+    
+    res.json({
+      success: true,
+      tableExists,
+      recordCount: records.length,
+      records,
+      message: 'Live locations debug successful'
+    })
+  } catch (error) {
+    console.error('Live locations debug error:', error)
+    res.status(500).json({ error: 'Live locations debug failed', details: error.message })
   }
 })
 

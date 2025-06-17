@@ -172,6 +172,42 @@ class ApiService {
     return this.parseResponse(response)
   }
 
+  // Live Locations (New functionality for real-time truck locations)
+  static async getLiveLocations() {
+    const response = await fetch(`${this.BASE_URL}/live-locations`)
+    if (!response.ok) throw new Error('Failed to fetch live locations')
+    return this.parseResponse(response)
+  }
+
+  static async addLiveLocation(liveLocationData) {
+    const response = await fetch(`${this.BASE_URL}/live-locations`, {
+      method: 'POST',
+      headers: this.getAdminAuthHeaders(),
+      body: JSON.stringify(liveLocationData)
+    })
+    if (!response.ok) throw new Error('Failed to add live location')
+    return this.parseResponse(response)
+  }
+
+  static async updateLiveLocation(liveLocationId, updates) {
+    const response = await fetch(`${this.BASE_URL}/live-locations/${liveLocationId}`, {
+      method: 'PUT',
+      headers: this.getAdminAuthHeaders(),
+      body: JSON.stringify(updates)
+    })
+    if (!response.ok) throw new Error('Failed to update live location')
+    return this.parseResponse(response)
+  }
+
+  static async deleteLiveLocation(liveLocationId) {
+    const response = await fetch(`${this.BASE_URL}/live-locations/${liveLocationId}`, {
+      method: 'DELETE',
+      headers: this.getAdminAuthHeaders()
+    })
+    if (!response.ok) throw new Error('Failed to delete live location')
+    return this.parseResponse(response)
+  }
+
   // Stripe payment
   static async createPaymentIntent(orderData) {
     const response = await fetch(`${this.BASE_URL}/create-payment-intent`, {

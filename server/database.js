@@ -346,6 +346,20 @@ const initializeSQLiteTables = () => {
         FOREIGN KEY (user_id) REFERENCES users (id)
       )`)
 
+      // Live locations table - for real-time food truck locations (SQLite version)
+      db.run(`CREATE TABLE IF NOT EXISTS live_locations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        truck_name TEXT NOT NULL,
+        current_address TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL, 
+        description TEXT,
+        hours_today TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`)
+
       resolve()
     })
   })
@@ -456,6 +470,20 @@ const initializePostgreSQLTables = async () => {
     status VARCHAR(50) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`)
+
+  // Live locations table - for real-time food truck locations
+  await query(`CREATE TABLE IF NOT EXISTS live_locations (
+    id SERIAL PRIMARY KEY,
+    truck_name VARCHAR(255) NOT NULL,
+    current_address VARCHAR(500) NOT NULL,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8), 
+    description TEXT,
+    hours_today VARCHAR(100),
+    is_active BOOLEAN DEFAULT true,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`)
 }
 

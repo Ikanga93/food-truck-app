@@ -400,4 +400,163 @@
   .schedule-note {
     padding: 30px 20px;
   }
+}
+
+/* Add live locations styling after existing styles */
+
+/* Live Locations Section (New functionality) */
+.live-locations {
+  background: linear-gradient(135deg, #ff6b6b, #e63946);
+  color: white;
+  padding: 3rem 0;
+  margin: 2rem 0;
+}
+
+.live-locations-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: white;
+}
+
+.live-locations-subtitle {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  opacity: 0.9;
+}
+
+.live-locations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.live-location-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.live-location-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.live-location-header {
+  margin-bottom: 1.5rem;
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 255, 0, 0.8);
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.live-indicator {
+  color: #00ff00;
+  font-size: 1.2rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.live-truck-name {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin: 0;
+  color: white;
+}
+
+.live-location-content {
+  margin-bottom: 1rem;
+}
+
+.live-location-info {
+  margin-bottom: 1.5rem;
+}
+
+.live-location-info .info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+  color: white;
+}
+
+.live-location-info .info-icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.live-location-info .description {
+  font-style: italic;
+  opacity: 0.9;
+  margin-left: 0.5rem;
+}
+
+.live-location-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.live-location-actions .btn {
+  flex: 1;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.live-location-actions .btn:hover {
+  background: white;
+  color: #e63946;
+  transform: translateY(-2px);
+}
+
+.live-location-time {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+/* Responsive design for live locations */
+@media (max-width: 768px) {
+  .live-locations-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .live-location-card {
+    padding: 1.5rem;
+  }
+  
+  .live-location-actions {
+    flex-direction: column;
+  }
+  
+  .live-locations-title {
+    font-size: 2rem;
+  }
 } 
