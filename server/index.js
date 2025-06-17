@@ -403,8 +403,27 @@ app.post('/api/verify-payment', async (req, res) => {
   try {
     const { sessionId, orderId } = req.body
 
+    // Validate input parameters
+    if (!sessionId || !orderId) {
+      return res.status(400).json({ 
+        error: 'Session ID and Order ID are required for payment verification' 
+      })
+    }
+
+    // Basic validation for Stripe session ID format (unless it's a test)
+    if (!sessionId.startsWith('cs_') && sessionId !== 'test') {
+      console.warn('Invalid Stripe session ID format received:', sessionId)
+      return res.status(400).json({ 
+        error: 'Invalid payment session format' 
+      })
+    }
+
+    console.log(`🔍 Verifying payment for session: ${sessionId}, order: ${orderId}`)
+
     // Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId)
+    
+    console.log(`💳 Stripe session status: ${session.payment_status}`)
 
     if (session.payment_status === 'paid') {
       // Update order status to confirmed and payment to completed
@@ -433,13 +452,29 @@ app.post('/api/verify-payment', async (req, res) => {
         io.to(`order-${orderId}`).emit('order-status-updated', updatedOrder)
       }
 
+      console.log(`✅ Payment verified successfully for order: ${orderId}`)
       res.json({ success: true, paymentStatus: 'completed' })
     } else {
+      console.log(`⚠️ Payment not completed. Status: ${session.payment_status}`)
       res.json({ success: false, paymentStatus: session.payment_status })
     }
   } catch (error) {
-    console.error('Error verifying payment:', error)
-    res.status(500).json({ error: error.message })
+    console.error('❌ Error verifying payment:', error)
+    
+    // Provide more specific error messages
+    if (error.message.includes('No such checkout.session')) {
+      res.status(400).json({ 
+        error: 'Invalid payment session. The session may have expired or does not exist.' 
+      })
+    } else if (error.message.includes('Invalid API Key')) {
+      res.status(500).json({ 
+        error: 'Payment service configuration error. Please contact support.' 
+      })
+    } else {
+      res.status(500).json({ 
+        error: 'Payment verification failed. Please try again or contact support.' 
+      })
+    }
   }
 })
 

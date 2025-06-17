@@ -128,8 +128,25 @@ const DashboardPage = ({ onLogout }) => {
           const newSocket = io(API_BASE_URL)
           setSocket(newSocket)
 
+          // Join admin room for real-time notifications
+          newSocket.emit('join-admin')
+
           // Listen for real-time order updates
           newSocket.on('orderUpdate', (updatedOrder) => {
+            setOrders(prevOrders =>
+              prevOrders.map(order =>
+                order.id === updatedOrder.id ? updatedOrder : order
+              )
+            )
+          })
+
+          // Listen for new orders
+          newSocket.on('new-order', (newOrder) => {
+            setOrders(prevOrders => [newOrder, ...prevOrders])
+          })
+
+          // Listen for order status updates  
+          newSocket.on('order-updated', (updatedOrder) => {
             setOrders(prevOrders =>
               prevOrders.map(order =>
                 order.id === updatedOrder.id ? updatedOrder : order

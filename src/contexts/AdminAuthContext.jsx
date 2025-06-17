@@ -36,6 +36,42 @@ export const AdminAuthProvider = ({ children }) => {
         }
       })
 
+      if (response.status === 403 || response.status === 401) {
+        // Token might be expired, try to refresh
+        console.log('Access token expired, attempting refresh...')
+        try {
+          const newToken = await refreshAccessToken()
+          // Retry with new token
+          const retryResponse = await fetch(`${API_BASE_URL}/api/auth/me`, {
+            headers: {
+              'Authorization': `Bearer ${newToken}`
+            }
+          })
+          
+          if (!retryResponse.ok) {
+            throw new Error('Failed to fetch user after token refresh')
+          }
+          
+          const userData = await retryResponse.json()
+          
+          // Only set user if they are an admin
+          if (userData.role === 'admin') {
+            setUser(userData)
+          } else {
+            // If not an admin, clear tokens
+            localStorage.removeItem('adminAccessToken')
+            localStorage.removeItem('adminRefreshToken')
+          }
+          return
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError)
+          // Clear tokens and continue with error handling
+          localStorage.removeItem('adminAccessToken')
+          localStorage.removeItem('adminRefreshToken')
+          throw new Error('Session expired. Please log in again.')
+        }
+      }
+
       if (!response.ok) {
         throw new Error('Failed to fetch user')
       }
@@ -52,9 +88,12 @@ export const AdminAuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Error fetching admin user:', error)
-      // If token is invalid, clear storage
-      localStorage.removeItem('adminAccessToken')
-      localStorage.removeItem('adminRefreshToken')
+      // Only clear storage if it's a session/auth error
+      if (error.message.includes('Session expired') || error.message.includes('authentication')) {
+        localStorage.removeItem('adminAccessToken')
+        localStorage.removeItem('adminRefreshToken')
+        setUser(null)
+      }
     } finally {
       setLoading(false)
     }

@@ -41,6 +41,78 @@ class ApiService {
     }
   }
 
+  // Helper method to refresh admin token
+  static async refreshAdminToken() {
+    const refreshToken = localStorage.getItem('adminRefreshToken')
+    if (!refreshToken) {
+      throw new Error('No refresh token available')
+    }
+
+    const response = await fetch(`${this.BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ refreshToken })
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Token refresh failed')
+    }
+
+    // Verify refreshed user is still an admin
+    if (data.user.role !== 'admin') {
+      throw new Error('Invalid user role after refresh')
+    }
+
+    localStorage.setItem('adminAccessToken', data.accessToken)
+    return data.accessToken
+  }
+
+  // Helper method to make authenticated requests with automatic retry
+  static async makeAuthenticatedRequest(url, options = {}) {
+    try {
+      // First attempt
+      const response = await fetch(url, options)
+      
+      // If 403/401 and we have admin refresh token, try to refresh
+      if ((response.status === 403 || response.status === 401) && 
+          localStorage.getItem('adminRefreshToken') && 
+          options.headers?.Authorization?.includes('Bearer')) {
+        
+        console.log('Access token expired, attempting refresh...')
+        try {
+          const newToken = await this.refreshAdminToken()
+          
+          // Update headers with new token
+          const newOptions = {
+            ...options,
+            headers: {
+              ...options.headers,
+              'Authorization': `Bearer ${newToken}`
+            }
+          }
+          
+          // Retry request with new token
+          const retryResponse = await fetch(url, newOptions)
+          return retryResponse
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError)
+          // Clear tokens on refresh failure
+          localStorage.removeItem('adminAccessToken')
+          localStorage.removeItem('adminRefreshToken')
+          throw new Error('Session expired. Please log in again.')
+        }
+      }
+      
+      return response
+    } catch (error) {
+      throw error
+    }
+  }
+
   // Helper method to safely parse JSON response
   static async parseResponse(response) {
     const text = await response.text()
@@ -57,7 +129,7 @@ class ApiService {
 
   // Orders
   static async getOrders() {
-    const response = await fetch(`${this.BASE_URL}/orders`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/orders`, {
       headers: this.getAdminAuthHeaders()
     })
     if (!response.ok) throw new Error('Failed to fetch orders')
@@ -65,7 +137,7 @@ class ApiService {
   }
 
   static async getCustomerOrders(customerId) {
-    const response = await fetch(`${this.BASE_URL}/orders/customer/${customerId}`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/orders/customer/${customerId}`, {
       headers: this.getAuthHeaders()
     })
     if (!response.ok) throw new Error('Failed to fetch customer orders')
@@ -83,7 +155,7 @@ class ApiService {
   }
 
   static async updateOrderStatus(orderId, status) {
-    const response = await fetch(`${this.BASE_URL}/orders/${orderId}/status`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/orders/${orderId}/status`, {
       method: 'PUT',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify({ status })
@@ -108,7 +180,7 @@ class ApiService {
   }
 
   static async addMenuItem(menuData) {
-    const response = await fetch(`${this.BASE_URL}/menu`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/menu`, {
       method: 'POST',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify(menuData)
@@ -118,7 +190,7 @@ class ApiService {
   }
 
   static async updateMenuItem(itemId, updates) {
-    const response = await fetch(`${this.BASE_URL}/menu/${itemId}`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/menu/${itemId}`, {
       method: 'PUT',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify(updates)
@@ -128,7 +200,7 @@ class ApiService {
   }
 
   static async deleteMenuItem(itemId) {
-    const response = await fetch(`${this.BASE_URL}/menu/${itemId}`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/menu/${itemId}`, {
       method: 'DELETE',
       headers: this.getAdminAuthHeaders()
     })
@@ -144,7 +216,7 @@ class ApiService {
   }
 
   static async addLocation(locationData) {
-    const response = await fetch(`${this.BASE_URL}/locations`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/locations`, {
       method: 'POST',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify(locationData)
@@ -154,7 +226,7 @@ class ApiService {
   }
 
   static async updateLocation(locationId, updates) {
-    const response = await fetch(`${this.BASE_URL}/locations/${locationId}`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/locations/${locationId}`, {
       method: 'PUT',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify(updates)
@@ -164,7 +236,7 @@ class ApiService {
   }
 
   static async deleteLocation(locationId) {
-    const response = await fetch(`${this.BASE_URL}/locations/${locationId}`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/locations/${locationId}`, {
       method: 'DELETE',
       headers: this.getAdminAuthHeaders()
     })
@@ -180,7 +252,7 @@ class ApiService {
   }
 
   static async addLiveLocation(liveLocationData) {
-    const response = await fetch(`${this.BASE_URL}/live-locations`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/live-locations`, {
       method: 'POST',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify(liveLocationData)
@@ -190,7 +262,7 @@ class ApiService {
   }
 
   static async updateLiveLocation(liveLocationId, updates) {
-    const response = await fetch(`${this.BASE_URL}/live-locations/${liveLocationId}`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/live-locations/${liveLocationId}`, {
       method: 'PUT',
       headers: this.getAdminAuthHeaders(),
       body: JSON.stringify(updates)
@@ -200,7 +272,7 @@ class ApiService {
   }
 
   static async deleteLiveLocation(liveLocationId) {
-    const response = await fetch(`${this.BASE_URL}/live-locations/${liveLocationId}`, {
+    const response = await this.makeAuthenticatedRequest(`${this.BASE_URL}/live-locations/${liveLocationId}`, {
       method: 'DELETE',
       headers: this.getAdminAuthHeaders()
     })
@@ -221,13 +293,35 @@ class ApiService {
 
   // Verify payment
   static async verifyPayment(sessionId, orderId) {
-    const response = await fetch(`${this.BASE_URL}/verify-payment`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ sessionId, orderId })
-    })
-    if (!response.ok) throw new Error('Failed to verify payment')
-    return this.parseResponse(response)
+    // Validate input parameters
+    if (!sessionId || !orderId) {
+      throw new Error('Session ID and Order ID are required for payment verification')
+    }
+    
+    // Basic validation for Stripe session ID format
+    if (!sessionId.startsWith('cs_') && sessionId !== 'test') {
+      console.warn('Invalid Stripe session ID format:', sessionId)
+      throw new Error('Invalid payment session format')
+    }
+    
+    try {
+      const response = await fetch(`${this.BASE_URL}/verify-payment`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ sessionId, orderId })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error('Payment verification failed:', errorData)
+        throw new Error(`Payment verification failed: ${response.status}`)
+      }
+      
+      return this.parseResponse(response)
+    } catch (error) {
+      console.error('Payment verification error:', error)
+      throw error
+    }
   }
 }
 
